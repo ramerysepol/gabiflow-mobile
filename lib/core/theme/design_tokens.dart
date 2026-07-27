@@ -58,6 +58,17 @@ abstract final class AppColors {
 
   /// Cor de semente padrão — pode ser substituída por cor do tenant.
   static const defaultSeed = Color(0xFF2563EB);
+
+  // --- Tinta (assinatura visual: header profundo tingido pelo tenant) ---
+  static const ink = Color(0xFF101623);
+  static const inkSoft = Color(0xFF1A2233);
+
+  /// Tinta tingida pela cor do tenant — sempre escura o bastante para
+  /// texto branco, independente da cor configurada no gabinete.
+  static Color inkTinted(Color primary) => Color.lerp(ink, primary, 0.22)!;
+
+  /// Canvas frio sob os cards (light).
+  static const canvasLight = Color(0xFFF3F5F8);
 }
 
 abstract final class AppSpacing {
@@ -73,11 +84,13 @@ abstract final class AppSpacing {
 
 abstract final class AppRadius {
   static const double xs = 4;
-  static const double sm = 8;
-  static const double card = 12;
-  static const double cardLarge = 16;
-  static const double modal = 20;
-  static const double fab = 16;
+  static const double sm = 10;
+  static const double control = 14;
+  static const double card = 16;
+  static const double cardLarge = 20;
+  static const double modal = 24;
+  static const double sheet = 28;
+  static const double fab = 18;
   static const double full = 9999;
 }
 
@@ -86,6 +99,20 @@ abstract final class AppElevation {
   static const double e1 = 1;
   static const double e2 = 2;
   static const double e3 = 3;
+}
+
+/// Estilos utilitários fora da escala Material (eyebrow labels, numerais).
+abstract final class AppTextStyles {
+  /// Rótulo de seção: uppercase, espaçado, discreto.
+  static TextStyle eyebrow(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return TextStyle(
+      fontSize: 11,
+      fontWeight: FontWeight.w600,
+      letterSpacing: 1.2,
+      color: isDark ? AppColors.neutral600Dark : AppColors.neutral600Light,
+    );
+  }
 }
 
 /// Curvas e durações de animação.

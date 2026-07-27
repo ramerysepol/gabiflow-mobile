@@ -199,7 +199,6 @@ class _LoginPageState extends ConsumerState<LoginPage> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Entrar'),
         leading: const BackButton(),
       ),
       body: SafeArea(
@@ -216,30 +215,63 @@ class _LoginPageState extends ConsumerState<LoginPage> {
               children: [
                 SizedBox(height: MediaQuery.of(context).size.height * 0.02),
 
-                // Avatar placeholder — substituir por CachedNetworkImage quando API retornar URL
-                CircleAvatar(
-                  radius: 40,
-                  backgroundColor: cs.primaryContainer,
-                  child: Text(
-                    widget.tenantSubdomain.isNotEmpty
-                        ? widget.tenantSubdomain[0].toUpperCase()
-                        : 'G',
-                    style: Theme.of(context).textTheme.displaySmall?.copyWith(
-                          color: cs.primary,
+                // Monograma do gabinete sobre tinta tingida pela cor do tenant
+                Center(
+                  child: Container(
+                    width: 76,
+                    height: 76,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(AppRadius.modal),
+                      gradient: LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: [
+                          Color.lerp(
+                              AppColors.inkTinted(cs.primary), cs.primary, 0.3)!,
+                          AppColors.inkTinted(cs.primary),
+                        ],
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: cs.primary.withValues(alpha: 0.3),
+                          blurRadius: 24,
+                          offset: const Offset(0, 8),
                         ),
+                      ],
+                    ),
+                    child: Center(
+                      child: Text(
+                        widget.tenantSubdomain.isNotEmpty
+                            ? widget.tenantSubdomain[0].toUpperCase()
+                            : 'G',
+                        style: Theme.of(context)
+                            .textTheme
+                            .displaySmall
+                            ?.copyWith(color: Colors.white),
+                      ),
+                    ),
                   ),
                 ).animate().fadeIn(duration: 500.ms).scale(
-                      begin: const Offset(0.8, 0.8),
+                      begin: const Offset(0.85, 0.85),
+                      curve: Curves.easeOutBack,
                     ),
 
-                const SizedBox(height: AppSpacing.md),
+                const SizedBox(height: AppSpacing.lg),
 
-                // Nome do tenant
+                // Identificação do gabinete
                 Text(
-                  widget.tenantSubdomain,
-                  style: Theme.of(context).textTheme.titleLarge,
+                  widget.tenantSubdomain.toUpperCase(),
+                  style: AppTextStyles.eyebrow(context),
                   textAlign: TextAlign.center,
                 ).animate().fadeIn(delay: 100.ms, duration: 400.ms),
+
+                const SizedBox(height: AppSpacing.xs),
+
+                Text(
+                  'Bem-vindo de volta',
+                  style: Theme.of(context).textTheme.headlineSmall,
+                  textAlign: TextAlign.center,
+                ).animate().fadeIn(delay: 130.ms, duration: 400.ms),
 
                 const SizedBox(height: AppSpacing.xs),
 

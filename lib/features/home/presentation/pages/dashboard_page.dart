@@ -27,7 +27,7 @@ class DashboardPage extends ConsumerWidget {
           SliverPadding(
             padding: const EdgeInsets.fromLTRB(
               AppSpacing.screenH,
-              AppSpacing.md,
+              AppSpacing.lg,
               AppSpacing.screenH,
               AppSpacing.xxl,
             ),
@@ -57,15 +57,15 @@ class DashboardPage extends ConsumerWidget {
                   orElse: () => ShimmerSkeleton.card(height: 110),
                 ),
 
-                const SizedBox(height: AppSpacing.lg),
+                const SizedBox(height: AppSpacing.xl),
 
                 // Seção atividade recente
                 Text(
-                  'Atividade recente',
-                  style: Theme.of(context).textTheme.titleMedium,
+                  'ATIVIDADE RECENTE',
+                  style: AppTextStyles.eyebrow(context),
                 ).animate().fadeIn(delay: 250.ms),
 
-                const SizedBox(height: AppSpacing.sm),
+                const SizedBox(height: AppSpacing.sm + 2),
 
                 statsAsync.when(
                   loading: () => _ActivitySkeleton(),
@@ -217,12 +217,16 @@ class _ActivityList extends StatelessWidget {
                 horizontal: AppSpacing.md,
                 vertical: AppSpacing.xs,
               ),
-              leading: CircleAvatar(
-                radius: 16,
-                backgroundColor: cs.primaryContainer,
+              leading: Container(
+                width: 34,
+                height: 34,
+                decoration: BoxDecoration(
+                  color: cs.primary.withValues(alpha: 0.1),
+                  shape: BoxShape.circle,
+                ),
                 child: Icon(
                   _iconForType(a.type),
-                  size: 15,
+                  size: 16,
                   color: cs.primary,
                 ),
               ),
