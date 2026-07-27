@@ -1,0 +1,41 @@
+// GENERATED CODE - DO NOT MODIFY BY HAND
+
+part of 'dashboard_stats_model.dart';
+
+// **************************************************************************
+// JsonSerializableGenerator
+// **************************************************************************
+
+_$DashboardStatsModelImpl _$$DashboardStatsModelImplFromJson(
+  Map<String, dynamic> json,
+) => _$DashboardStatsModelImpl(
+  totalConstituents: (json['totalConstituents'] as num).toInt(),
+  newConstituentsToday: (json['newConstituentsToday'] as num).toInt(),
+  totalDemands: (json['totalDemands'] as num).toInt(),
+  openDemands: (json['openDemands'] as num).toInt(),
+  resolvedDemandsToday: (json['resolvedDemandsToday'] as num).toInt(),
+  upcomingEvents: (json['upcomingEvents'] as num).toInt(),
+  eventsThisWeek: (json['eventsThisWeek'] as num).toInt(),
+  messagestoday: (json['messagestoday'] as num).toInt(),
+  messagesSent: (json['messagesSent'] as num).toInt(),
+  recentActivities:
+      (json['recentActivities'] as List<dynamic>?)
+          ?.map((e) => RecentActivityModel.fromJson(e as Map<String, dynamic>))
+          .toList() ??
+      const [],
+);
+
+Map<String, dynamic> _$$DashboardStatsModelImplToJson(
+  _$DashboardStatsModelImpl instance,
+) => <String, dynamic>{
+  'totalConstituents': instance.totalConstituents,
+  'newConstituentsToday': instance.newConstituentsToday,
+  'totalDemands': instance.totalDemands,
+  'openDemands': instance.openDemands,
+  'resolvedDemandsToday': instance.resolvedDemandsToday,
+  'upcomingEvents': instance.upcomingEvents,
+  'eventsThisWeek': instance.eventsThisWeek,
+  'messagestoday': instance.messagestoday,
+  'messagesSent': instance.messagesSent,
+  'recentActivities': instance.recentActivities,
+};
