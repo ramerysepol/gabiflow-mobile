@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:image_picker/image_picker.dart';
 
 import '../../../../core/theme/design_tokens.dart';
 import '../../../../core/widgets/primary_button.dart';
@@ -79,6 +80,10 @@ class _WhatsAppSendSheetState extends ConsumerState<WhatsAppSendSheet> {
 
   int _intervaloSegundos = 3;
   bool _enviando = false;
+
+  /// URL pública da mídia do header (template Meta com imagem).
+  String? _headerMediaUrl;
+  bool _uploadingMedia = false;
 
   @override
   void dispose() {
@@ -204,6 +209,36 @@ class _WhatsAppSendSheetState extends ConsumerState<WhatsAppSendSheet> {
     return campo;
   }
 
+  Future<void> _escolherImagem() async {
+    try {
+      final picked = await ImagePicker().pickImage(
+        source: ImageSource.gallery,
+        maxWidth: 1600,
+        imageQuality: 88,
+      );
+      if (picked == null) return;
+      setState(() => _uploadingMedia = true);
+      final url = await ref
+          .read(whatsappDataSourceProvider)
+          .uploadMedia(picked.path);
+      if (!mounted) return;
+      setState(() => _headerMediaUrl = url);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Falha ao enviar imagem: '
+              '${e.toString().replaceFirst('Exception: ', '')}',
+            ),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _uploadingMedia = false);
+    }
+  }
+
   // ── Envio ────────────────────────────────────────────────────────────────
 
   Future<void> _enviar() async {
@@ -230,6 +265,8 @@ class _WhatsAppSendSheetState extends ConsumerState<WhatsAppSendSheet> {
               templateName: _templateMeta!.templateName,
               language: _templateMeta!.language,
               variables: variables,
+              headerType: _headerTypeParaEnvio,
+              headerUrl: _headerTypeParaEnvio != null ? _headerMediaUrl : null,
             );
           case _Canal.local:
             await ds.sendIndividual(
@@ -261,6 +298,8 @@ class _WhatsAppSendSheetState extends ConsumerState<WhatsAppSendSheet> {
           filtros: widget.filtros ?? ConstituentFilters.vazios,
           search: widget.search,
           intervaloSegundos: _intervaloSegundos,
+          headerType: _headerTypeParaEnvio,
+          headerUrl: _headerTypeParaEnvio != null ? _headerMediaUrl : null,
         );
         if (!mounted) return;
         Navigator.of(context).pop();
@@ -287,13 +326,24 @@ class _WhatsAppSendSheetState extends ConsumerState<WhatsAppSendSheet> {
       case _Canal.texto:
         return _textoLivreController.text.trim().isNotEmpty;
       case _Canal.meta:
-        return _templateMeta != null;
+        if (_templateMeta == null) return false;
+        // Template com imagem no cabeçalho exige a imagem anexada
+        if (_templateMeta!.headerFormat == 'IMAGE' &&
+            _headerMediaUrl == null) {
+          return false;
+        }
+        return true;
       case _Canal.local:
         return widget.emMassa
             ? _templatesLocais.isNotEmpty
             : _templateLocalIndividual != null;
     }
   }
+
+  String? get _headerTypeParaEnvio =>
+      _canal == _Canal.meta && _templateMeta?.headerFormat == 'IMAGE'
+          ? 'image'
+          : null;
 
   // ── UI ───────────────────────────────────────────────────────────────────
 
@@ -455,19 +505,78 @@ class _WhatsAppSendSheetState extends ConsumerState<WhatsAppSendSheet> {
               titulo: t.nome,
               texto: t.texto,
               selecionado: _templateMeta?.templateName == t.templateName,
-              desabilitado: t.requerMidia,
-              rodape: t.requerMidia
-                  ? 'Este template tem mídia — envie pelo desktop'
-                  : null,
-              onTap: t.requerMidia
+              desabilitado: !t.midiaSuportadaNoApp,
+              rodape: !t.midiaSuportadaNoApp
+                  ? 'Header de ${t.headerFormat == 'VIDEO' ? 'vídeo' : 'documento'} — envie pelo desktop'
+                  : t.headerFormat == 'IMAGE'
+                      ? '📷 Pede uma imagem no cabeçalho'
+                      : null,
+              onTap: !t.midiaSuportadaNoApp
                   ? null
                   : () => setState(() {
                         _templateMeta = t;
+                        _headerMediaUrl = null;
                         _valoresVariaveis.clear();
                         _mapCampo.clear();
                       }),
             ),
           ),
+        ],
+
+        // Mídia do cabeçalho (template Meta com imagem)
+        if (_canal == _Canal.meta &&
+            _templateMeta?.headerFormat == 'IMAGE') ...[
+          const SizedBox(height: AppSpacing.lg),
+          Text('IMAGEM DO CABEÇALHO', style: AppTextStyles.eyebrow(context)),
+          const SizedBox(height: AppSpacing.sm),
+          if (_headerMediaUrl == null)
+            OutlinedButton.icon(
+              onPressed: _uploadingMedia ? null : _escolherImagem,
+              icon: _uploadingMedia
+                  ? const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Icon(Icons.add_photo_alternate_rounded),
+              label: Text(
+                  _uploadingMedia ? 'Enviando imagem…' : 'Adicionar imagem'),
+            )
+          else
+            Row(
+              children: [
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(AppRadius.sm),
+                  child: Image.network(
+                    _headerMediaUrl!,
+                    width: 72,
+                    height: 72,
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, __, ___) => Container(
+                      width: 72,
+                      height: 72,
+                      color: Theme.of(context)
+                          .colorScheme
+                          .primary
+                          .withValues(alpha: 0.1),
+                      child: const Icon(Icons.image_rounded),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: AppSpacing.md),
+                const Expanded(child: Text('Imagem pronta para envio')),
+                IconButton(
+                  tooltip: 'Trocar imagem',
+                  icon: const Icon(Icons.refresh_rounded),
+                  onPressed: _uploadingMedia ? null : _escolherImagem,
+                ),
+                IconButton(
+                  tooltip: 'Remover',
+                  icon: const Icon(Icons.close_rounded),
+                  onPressed: () => setState(() => _headerMediaUrl = null),
+                ),
+              ],
+            ),
         ],
 
         if (_canal == _Canal.local) ...[

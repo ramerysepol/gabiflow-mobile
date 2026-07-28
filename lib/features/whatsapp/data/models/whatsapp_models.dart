@@ -32,6 +32,9 @@ class MetaTemplate {
   final List<String> variaveis;
   final bool requerMidia;
 
+  /// 'IMAGE' | 'VIDEO' | 'DOCUMENT' | null (header só de texto).
+  final String? headerFormat;
+
   const MetaTemplate({
     required this.id,
     required this.nome,
@@ -41,7 +44,11 @@ class MetaTemplate {
     required this.texto,
     required this.variaveis,
     required this.requerMidia,
+    this.headerFormat,
   });
+
+  /// Mídia de imagem pode ser anexada pelo app; vídeo/documento só desktop.
+  bool get midiaSuportadaNoApp => !requerMidia || headerFormat == 'IMAGE';
 
   factory MetaTemplate.fromJson(Map<String, dynamic> json) => MetaTemplate(
         id: (json['id'] as num?)?.toInt() ?? 0,
@@ -54,6 +61,7 @@ class MetaTemplate {
             .map((e) => e.toString())
             .toList(),
         requerMidia: json['requer_midia'] == true,
+        headerFormat: json['header_format']?.toString(),
       );
 }
 

@@ -82,6 +82,9 @@ dependencies:
   # Formatadores BR (CPF/telefone)
   mask_text_input_formatter: ^2.9.0
 
+  # Seleção de imagem (mídia de templates WhatsApp)
+  image_picker: ^1.1.2
+
   # Mapa
   flutter_map: ^7.0.2
   latlong2: ^0.9.1

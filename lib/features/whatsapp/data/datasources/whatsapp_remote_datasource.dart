@@ -21,7 +21,12 @@ abstract class WhatsAppRemoteDataSource {
     int? templateId,
     Map<String, String>? variables,
     String? message,
+    String? headerType,
+    String? headerUrl,
   });
+
+  /// Faz upload de mídia (imagem) e retorna a URL pública.
+  Future<String> uploadMedia(String filePath, {String mediaType = 'image'});
 
   /// Envio em massa pelos filtros ativos. Retorna o id da campanha.
   Future<int> sendBulk({
@@ -34,6 +39,8 @@ abstract class WhatsAppRemoteDataSource {
     ConstituentFilters filtros = ConstituentFilters.vazios,
     String? search,
     int intervaloSegundos = 3,
+    String? headerType,
+    String? headerUrl,
   });
 
   Future<CampanhaStatus> getCampaign(int id);
@@ -95,6 +102,8 @@ class WhatsAppRemoteDataSourceImpl implements WhatsAppRemoteDataSource {
     int? templateId,
     Map<String, String>? variables,
     String? message,
+    String? headerType,
+    String? headerUrl,
   }) async {
     final opts = await _authOptions();
     final response = await _apiClient.post<Map<String, dynamic>>(
@@ -107,10 +116,33 @@ class WhatsAppRemoteDataSourceImpl implements WhatsAppRemoteDataSource {
         if (templateId != null) 'template_id': templateId,
         if (variables != null) 'variables': variables,
         if (message != null) 'message': message,
+        if (headerType != null) 'header_type': headerType,
+        if (headerUrl != null) 'header_url': headerUrl,
       },
       options: opts,
     );
     _extractData(response.data);
+  }
+
+  @override
+  Future<String> uploadMedia(String filePath,
+      {String mediaType = 'image'}) async {
+    final opts = await _authOptions();
+    final formData = FormData.fromMap({
+      'file': await MultipartFile.fromFile(filePath),
+      'mediaType': mediaType,
+    });
+    final response = await _apiClient.post<Map<String, dynamic>>(
+      '/api/mobile/whatsapp/upload-media',
+      data: formData,
+      options: opts,
+    );
+    final data = _extractData(response.data);
+    final url = data['url']?.toString();
+    if (url == null || url.isEmpty) {
+      throw Exception('Upload não retornou a URL do arquivo');
+    }
+    return url;
   }
 
   @override
@@ -124,6 +156,8 @@ class WhatsAppRemoteDataSourceImpl implements WhatsAppRemoteDataSource {
     ConstituentFilters filtros = ConstituentFilters.vazios,
     String? search,
     int intervaloSegundos = 3,
+    String? headerType,
+    String? headerUrl,
   }) async {
     final opts = await _authOptions();
     final response = await _apiClient.post<Map<String, dynamic>>(
@@ -134,6 +168,8 @@ class WhatsAppRemoteDataSourceImpl implements WhatsAppRemoteDataSource {
         if (templateName != null) 'template_name': templateName,
         if (language != null) 'language': language,
         if (templateIds != null) 'template_ids': templateIds,
+        if (headerType != null) 'header_type': headerType,
+        if (headerUrl != null) 'header_url': headerUrl,
         if (mapeamento != null)
           'mapeamento':
               mapeamento.map((k, v) => MapEntry(k, v.toJson())),
