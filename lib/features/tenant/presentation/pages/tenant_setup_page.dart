@@ -3,6 +3,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../../../core/services/storage_service.dart';
 import '../../../../core/theme/design_tokens.dart';
@@ -23,12 +24,6 @@ class _TenantSetupPageState extends ConsumerState<TenantSetupPage> {
   final _formKey = GlobalKey<FormState>();
   final _subdomainController = TextEditingController();
   bool _isLoading = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _subdomainController.text = 'paulocamara';
-  }
 
   @override
   void dispose() {
@@ -87,6 +82,16 @@ class _TenantSetupPageState extends ConsumerState<TenantSetupPage> {
       if (mounted) _showError('Erro ao verificar gabinete: $e');
     } finally {
       if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  Future<void> _abrirSite() async {
+    final uri = Uri.parse('https://www.gabiflow.com.br');
+    try {
+      final ok = await launchUrl(uri, mode: LaunchMode.externalApplication);
+      if (!ok && mounted) _showError('Não foi possível abrir o site');
+    } catch (_) {
+      if (mounted) _showError('Não foi possível abrir o site');
     }
   }
 
@@ -166,7 +171,7 @@ class _TenantSetupPageState extends ConsumerState<TenantSetupPage> {
                 AppInputField(
                   label: 'Endereço do gabinete',
                   controller: _subdomainController,
-                  hintText: 'samuel',
+                  hintText: 'seugabinete',
                   keyboardType: TextInputType.text,
                   textInputAction: TextInputAction.done,
                   onFieldSubmitted: (_) => _continuar(),
@@ -205,12 +210,10 @@ class _TenantSetupPageState extends ConsumerState<TenantSetupPage> {
 
                 const SizedBox(height: AppSpacing.md),
 
-                // Link de suporte
+                // Sem acesso ainda → site institucional
                 Center(
                   child: GestureDetector(
-                    onTap: () {
-                      // TODO: abrir suporte
-                    },
+                    onTap: _abrirSite,
                     child: Text(
                       'Não tenho acesso ainda',
                       style: Theme.of(context).textTheme.bodyMedium?.copyWith(
