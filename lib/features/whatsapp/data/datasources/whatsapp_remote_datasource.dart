@@ -128,8 +128,15 @@ class WhatsAppRemoteDataSourceImpl implements WhatsAppRemoteDataSource {
   Future<String> uploadMedia(String filePath,
       {String mediaType = 'image'}) async {
     final opts = await _authOptions();
+    // MIME pela extensão — sem isso o Dio envia octet-stream e o backend rejeita
+    final ext = filePath.split('.').last.toLowerCase();
+    final mime = switch (ext) {
+      'png' => DioMediaType('image', 'png'),
+      'jpg' || 'jpeg' => DioMediaType('image', 'jpeg'),
+      _ => DioMediaType('image', 'jpeg'),
+    };
     final formData = FormData.fromMap({
-      'file': await MultipartFile.fromFile(filePath),
+      'file': await MultipartFile.fromFile(filePath, contentType: mime),
       'mediaType': mediaType,
     });
     final response = await _apiClient.post<Map<String, dynamic>>(
