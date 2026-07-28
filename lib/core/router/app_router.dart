@@ -14,6 +14,7 @@ import '../../features/home/presentation/pages/dashboard_page.dart';
 import '../../features/home/presentation/pages/home_page.dart';
 import '../../features/splash/presentation/pages/splash_page.dart';
 import '../../features/tenant/presentation/pages/tenant_setup_page.dart';
+import '../../features/whatsapp/presentation/pages/envio_massa_progress_page.dart';
 import '../../features/command_center/presentation/pages/command_center_page.dart';
 import '../../features/command_center/presentation/pages/ia_chat_page.dart';
 import '../../features/electoral_data/presentation/pages/analise_page.dart';
@@ -97,6 +98,14 @@ final GoRouter appRouter = GoRouter(
           builder: (_, state) {
             final id = state.pathParameters['id']!;
             return ConstituentFormPage(constituentId: id);
+          },
+        ),
+        GoRoute(
+          path: '/home/constituents/envio/:campaignId',
+          builder: (_, state) {
+            final id =
+                int.tryParse(state.pathParameters['campaignId'] ?? '') ?? 0;
+            return EnvioMassaProgressPage(campaignId: id);
           },
         ),
 

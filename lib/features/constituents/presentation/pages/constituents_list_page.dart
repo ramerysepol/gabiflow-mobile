@@ -10,6 +10,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../../../core/theme/design_tokens.dart';
 import '../../../../core/widgets/app_empty_state.dart';
 import '../../../../core/widgets/shimmer_skeleton.dart';
+import '../../../whatsapp/presentation/widgets/whatsapp_send_sheet.dart';
 import '../../data/models/constituent_extras.dart';
 import '../../data/models/constituent_model.dart';
 import '../providers/constituent_provider.dart';
@@ -390,6 +391,22 @@ class _FiltrosBar extends ConsumerWidget {
                 builder: (_) => _FiltrosSheet(atual: filters),
               );
               if (novo != null) onChanged(novo);
+            },
+          ),
+          const SizedBox(width: AppSpacing.sm),
+          // Envio de WhatsApp em massa (respeita filtros ativos)
+          _ChipFiltro(
+            icon: Icons.chat_rounded,
+            label: 'WhatsApp',
+            ativo: false,
+            onTap: () {
+              final estado = ref.read(constituentListProvider);
+              WhatsAppSendSheet.showBulk(
+                context,
+                filtros: estado.filters,
+                search: estado.searchQuery.isEmpty ? null : estado.searchQuery,
+                totalEstimado: estado.total > 0 ? estado.total : null,
+              );
             },
           ),
           const SizedBox(width: AppSpacing.sm),

@@ -43,6 +43,7 @@ class ConstituentListState {
   final bool isLoadingMore;
   final bool hasMore;
   final int page;
+  final int total;
   final String? error;
   final String searchQuery;
   final ConstituentFilters filters;
@@ -53,6 +54,7 @@ class ConstituentListState {
     this.isLoadingMore = false,
     this.hasMore = true,
     this.page = 1,
+    this.total = 0,
     this.error,
     this.searchQuery = '',
     this.filters = ConstituentFilters.vazios,
@@ -64,6 +66,7 @@ class ConstituentListState {
     bool? isLoadingMore,
     bool? hasMore,
     int? page,
+    int? total,
     String? error,
     String? searchQuery,
     ConstituentFilters? filters,
@@ -74,6 +77,7 @@ class ConstituentListState {
         isLoadingMore: isLoadingMore ?? this.isLoadingMore,
         hasMore: hasMore ?? this.hasMore,
         page: page ?? this.page,
+        total: total ?? this.total,
         error: error ?? this.error,
         searchQuery: searchQuery ?? this.searchQuery,
         filters: filters ?? this.filters,
@@ -114,6 +118,7 @@ class ConstituentListNotifier extends StateNotifier<ConstituentListState> {
         isLoadingMore: false,
         hasMore: result.hasMore,
         page: nextPage + 1,
+        total: result.total,
       );
     } catch (e) {
       state = state.copyWith(

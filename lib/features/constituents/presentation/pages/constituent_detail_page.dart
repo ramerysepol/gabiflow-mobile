@@ -7,6 +7,8 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../../../../core/theme/design_tokens.dart';
 import '../../../../core/widgets/shimmer_skeleton.dart';
+import '../../../whatsapp/presentation/widgets/whatsapp_send_sheet.dart';
+import '../../data/models/constituent_model.dart';
 import '../providers/constituent_provider.dart';
 
 class ConstituentDetailPage extends ConsumerWidget {
@@ -123,12 +125,7 @@ class ConstituentDetailPage extends ConsumerWidget {
                           icon: Icons.chat_rounded,
                           label: 'WhatsApp',
                           color: const Color(0xFF25D366),
-                          onTap: () => _abrirContato(
-                            context,
-                            c.whatsapp ?? c.telefone,
-                            (clean) => Uri.parse('https://wa.me/55$clean'),
-                            externo: true,
-                          ),
+                          onTap: () => _opcoesWhatsApp(context, c),
                         ),
                       ),
                       const SizedBox(width: AppSpacing.sm),
@@ -315,6 +312,57 @@ class ConstituentDetailPage extends ConsumerWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+// ─── WhatsApp: enviar pelo gabinete ou abrir o aplicativo ───────────────────
+
+Future<void> _opcoesWhatsApp(BuildContext context, ConstituentModel c) async {
+  final phone = c.whatsapp ?? c.telefone;
+  if (phone == null || phone.replaceAll(RegExp(r'\D'), '').isEmpty) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Munícipe sem telefone cadastrado')),
+    );
+    return;
+  }
+
+  final escolha = await showModalBottomSheet<String>(
+    context: context,
+    builder: (ctx) => SafeArea(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          ListTile(
+            leading: const Icon(Icons.forward_to_inbox_rounded,
+                color: Color(0xFF128C7E)),
+            title: const Text('Enviar pelo gabinete'),
+            subtitle: const Text(
+                'Mensagem livre ou template (Meta / Z-API), com registro'),
+            onTap: () => Navigator.of(ctx).pop('gabinete'),
+          ),
+          ListTile(
+            leading:
+                const Icon(Icons.open_in_new_rounded, color: Color(0xFF25D366)),
+            title: const Text('Abrir no WhatsApp'),
+            subtitle: const Text('Conversa direta pelo seu aparelho'),
+            onTap: () => Navigator.of(ctx).pop('abrir'),
+          ),
+          const SizedBox(height: AppSpacing.sm),
+        ],
+      ),
+    ),
+  );
+
+  if (escolha == null || !context.mounted) return;
+  if (escolha == 'gabinete') {
+    await WhatsAppSendSheet.show(context, c);
+  } else {
+    await _abrirContato(
+      context,
+      phone,
+      (clean) => Uri.parse('https://wa.me/55$clean'),
+      externo: true,
     );
   }
 }
