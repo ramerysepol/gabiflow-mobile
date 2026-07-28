@@ -7,6 +7,7 @@ import '../../../../core/services/biometric_service.dart';
 import '../../../../core/services/logger_service.dart';
 import '../../../../core/services/storage_service.dart';
 import '../../../../core/theme/design_tokens.dart';
+import '../../../../core/theme/tenant_theme_provider.dart';
 import '../../../../core/widgets/app_input_field.dart';
 import '../../../../core/widgets/primary_button.dart';
 import '../providers/auth_provider.dart';
@@ -73,6 +74,10 @@ class _LoginPageState extends ConsumerState<LoginPage> {
             );
         if (!mounted) return;
         if (ok) {
+          // Aplica a preferência de tema do usuário em segundo plano
+          ref
+              .read(tenantSeedProvider.notifier)
+              .refreshFromServer(widget.tenantSubdomain);
           context.go('/home');
         } else {
           _showError(ref.read(authProvider).error ?? 'Erro ao fazer login');
@@ -112,6 +117,10 @@ class _LoginPageState extends ConsumerState<LoginPage> {
           }
         }
         if (!mounted) return;
+        // Aplica a preferência de tema do usuário em segundo plano
+        ref
+            .read(tenantSeedProvider.notifier)
+            .refreshFromServer(widget.tenantSubdomain);
         context.go('/home');
       } else {
         final error = ref.read(authProvider).error;

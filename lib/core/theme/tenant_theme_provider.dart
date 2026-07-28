@@ -31,38 +31,72 @@ class TenantSeedNotifier extends StateNotifier<Color> {
   void reset() => state = AppColors.defaultSeed;
 
   /// Busca o tema no servidor, persiste no config do tenant e aplica.
+  /// Cor efetiva: preferência do usuário logado (user_preferences) →
+  /// senão a cor oficial do gabinete (system_tenants) → senão padrão.
   /// Silencioso em caso de erro — o app segue com a última cor conhecida.
   Future<void> refreshFromServer(String subdomain) async {
     try {
       final client = ApiClient();
       client.updateBaseUrl(subdomain);
+
+      // 1) Cor oficial do gabinete (público)
+      String? corGabinete;
+      String? logoUrl;
+      String? nome;
       final res = await client.get<Map<String, dynamic>>(
         '/api/mobile/tenant/theme',
         queryParameters: {'subdomain': subdomain},
       );
       final body = res.data;
-      if (res.statusCode != 200 || body == null || body['success'] != true) {
-        return;
+      if (res.statusCode == 200 && body != null && body['success'] == true) {
+        final data = (body['data'] as Map?)?.cast<String, dynamic>();
+        corGabinete = data?['primary_color'] as String?;
+        logoUrl = data?['logo_url'] as String?;
+        nome = data?['name'] as String?;
       }
-      final data = (body['data'] as Map?)?.cast<String, dynamic>();
-      if (data == null) return;
+
+      // 2) Preferência do usuário logado (se houver sessão)
+      final corUsuario = await _buscarCorDoUsuario(client);
+
+      final corEfetiva = corUsuario ?? corGabinete;
 
       // Persiste junto da config do tenant (se ainda for o mesmo gabinete)
       final config =
           await StorageService.getTenantConfig() ?? <String, dynamic>{};
       if ((config['subdomain'] as String?) != subdomain) return;
-      config['primary_color'] = data['primary_color'];
-      config['logo_url'] = data['logo_url'];
-      config['name'] = data['name'];
+      config['primary_color'] = corEfetiva;
+      config['logo_url'] = logoUrl;
+      if (nome != null) config['name'] = nome;
       await StorageService.saveTenantConfig(config);
 
       if (!mounted) return;
-      state = parseHexColor(data['primary_color'] as String?) ??
-          AppColors.defaultSeed;
+      state = parseHexColor(corEfetiva) ?? AppColors.defaultSeed;
       LoggerService.i(
-          'Tema do gabinete aplicado: ${data['primary_color'] ?? 'padrão'}');
+          'Tema aplicado: ${corEfetiva ?? 'padrão'} (usuário: ${corUsuario != null})');
     } catch (e) {
       LoggerService.e('Tema do gabinete — falha ao atualizar', e);
+    }
+  }
+
+  /// Preferência de cor do usuário logado; null se sem sessão ou sem
+  /// preferência salva.
+  Future<String?> _buscarCorDoUsuario(ApiClient client) async {
+    try {
+      final token = await StorageService.getAccessToken();
+      if (token == null) return null;
+      final res = await client.get<Map<String, dynamic>>(
+        '/api/mobile/settings/appearance',
+      );
+      final body = res.data;
+      if (res.statusCode != 200 || body == null || body['success'] != true) {
+        return null;
+      }
+      final appearance =
+          ((body['data'] as Map?)?['appearance'] as Map?)?.cast<String, dynamic>();
+      final cor = appearance?['primaryColor'] as String?;
+      return parseHexColor(cor) != null ? cor : null;
+    } catch (_) {
+      return null;
     }
   }
 }
