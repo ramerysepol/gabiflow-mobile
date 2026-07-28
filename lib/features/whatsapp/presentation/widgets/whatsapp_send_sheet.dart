@@ -454,7 +454,7 @@ class _WhatsAppSendSheetState extends ConsumerState<WhatsAppSendSheet> {
             (t) => _TemplateTile(
               titulo: t.nome,
               texto: t.texto,
-              selecionado: _templateMeta?.id == t.id,
+              selecionado: _templateMeta?.templateName == t.templateName,
               desabilitado: t.requerMidia,
               rodape: t.requerMidia
                   ? 'Este template tem mídia — envie pelo desktop'
@@ -560,14 +560,14 @@ class _WhatsAppSendSheetState extends ConsumerState<WhatsAppSendSheet> {
           ),
         ],
 
-        // Intervalo (massa)
-        if (widget.emMassa && _canal != null) ...[
+        // Intervalo (massa, apenas Z-API — Meta envia direto como no desktop)
+        if (widget.emMassa && _canal == _Canal.local) ...[
           const SizedBox(height: AppSpacing.lg),
           Text('INTERVALO ENTRE ENVIOS', style: AppTextStyles.eyebrow(context)),
           const SizedBox(height: AppSpacing.sm),
           Wrap(
             spacing: AppSpacing.sm,
-            children: [3, 5, 10, 15, 30]
+            children: [1, 2, 3, 5, 10]
                 .map(
                   (s) => ChoiceChip(
                     label: Text('${s}s'),
