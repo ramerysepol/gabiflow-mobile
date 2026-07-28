@@ -1,21 +1,23 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/network/api_client.dart';
 import '../../../../core/services/logger_service.dart';
 import '../../../../core/services/storage_service.dart';
 import '../../../../core/theme/design_tokens.dart';
+import '../../../../core/theme/tenant_theme_provider.dart';
 
 /// Splash Screen com animações premium e roteamento inicial.
-class SplashPage extends StatefulWidget {
+class SplashPage extends ConsumerStatefulWidget {
   const SplashPage({super.key});
 
   @override
-  State<SplashPage> createState() => _SplashPageState();
+  ConsumerState<SplashPage> createState() => _SplashPageState();
 }
 
-class _SplashPageState extends State<SplashPage>
+class _SplashPageState extends ConsumerState<SplashPage>
     with SingleTickerProviderStateMixin {
   late final AnimationController _progressController = AnimationController(
     vsync: this,
@@ -53,6 +55,10 @@ class _SplashPageState extends State<SplashPage>
       context.go('/tenant-setup');
       return;
     }
+
+    // Sincroniza a cor do gabinete em segundo plano (mudanças feitas no
+    // desktop chegam aqui a cada abertura do app).
+    ref.read(tenantSeedProvider.notifier).refreshFromServer(subdomain);
 
     final token = await StorageService.getAccessToken();
     final refreshToken = await StorageService.getRefreshToken();

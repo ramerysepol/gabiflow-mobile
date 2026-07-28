@@ -7,7 +7,7 @@ import 'package:hive_flutter/hive_flutter.dart';
 import 'core/router/app_router.dart';
 import 'core/services/storage_service.dart';
 import 'core/theme/app_theme.dart';
-import 'core/theme/design_tokens.dart';
+import 'core/theme/tenant_theme_provider.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -24,9 +24,16 @@ Future<void> main() async {
   // Secure storage + preferências
   await StorageService.init();
 
+  // Cor do gabinete salva — semeia o tema sem flash da cor padrão
+  final initialSeed = await loadSavedSeedColor();
+
   runApp(
-    const ProviderScope(
-      child: GabiFlowApp(),
+    ProviderScope(
+      overrides: [
+        tenantSeedProvider
+            .overrideWith((ref) => TenantSeedNotifier(initialSeed)),
+      ],
+      child: const GabiFlowApp(),
     ),
   );
 }
@@ -36,8 +43,9 @@ class GabiFlowApp extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // A cor semente poderá ser alterada dinamicamente via provider de tenant.
-    const seedColor = AppColors.defaultSeed;
+    // Cor semente do gabinete (theme_primary_color do desktop),
+    // atualizada no setup do tenant e a cada abertura do app.
+    final seedColor = ref.watch(tenantSeedProvider);
 
     return MaterialApp.router(
       title: 'GabiFlow',

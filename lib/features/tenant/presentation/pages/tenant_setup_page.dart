@@ -6,6 +6,7 @@ import 'package:google_fonts/google_fonts.dart';
 
 import '../../../../core/services/storage_service.dart';
 import '../../../../core/theme/design_tokens.dart';
+import '../../../../core/theme/tenant_theme_provider.dart';
 import '../../../../core/widgets/app_input_field.dart';
 import '../../../../core/widgets/primary_button.dart';
 import '../providers/tenant_provider.dart';
@@ -72,6 +73,11 @@ class _TenantSetupPageState extends ConsumerState<TenantSetupPage> {
           'subdomain': subdomain,
           'url': '$subdomain.gabiflow.com.br',
         });
+        // Aplica a identidade visual do gabinete antes de abrir o login
+        // (silencioso em caso de falha — segue com a cor padrão).
+        final seed = ref.read(tenantSeedProvider.notifier);
+        seed.reset();
+        await seed.refreshFromServer(subdomain);
         if (!mounted) return;
         context.go('/login/$subdomain');
       } else {
