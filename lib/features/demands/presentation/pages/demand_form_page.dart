@@ -27,13 +27,17 @@ class _DemandFormPageState extends ConsumerState<DemandFormPage> {
 
   final _tituloCtrl = TextEditingController();
   final _descCtrl = TextEditingController();
-  final _categoriaCtrl = TextEditingController();
   final _constituentSearchCtrl = TextEditingController();
 
   String _prioridade = 'medium';
   String _status = 'pending';
+  String _tipo = 'solicitacao';
   DateTime? _deadline;
   ConstituentModel? _selectedConstituent;
+
+  /// Na edicao, os campos so' aparecem depois que a demanda chega do servidor.
+  bool _carregando = false;
+  String? _erroAoCarregar;
 
   static const _prioridades = [
     ('low', 'Baixa'),
@@ -48,11 +52,67 @@ class _DemandFormPageState extends ConsumerState<DemandFormPage> {
     ('cancelled', 'Cancelada'),
   ];
 
+  /// Mesmo vocabulario do painel (components/demands/demand-form.tsx).
+  static const _tipos = [
+    ('solicitacao', 'Solicitação'),
+    ('reclamacao', 'Reclamação'),
+    ('sugestao', 'Sugestão'),
+    ('servico', 'Serviço'),
+    ('emenda', 'Emenda'),
+    ('outro', 'Outro'),
+  ];
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.isEdit) _carregarDemanda();
+  }
+
+  /// Busca a demanda e joga os valores gravados nos campos. Sem isto o
+  /// formulario de edicao abria em branco e salvar apagava o que existia.
+  Future<void> _carregarDemanda() async {
+    setState(() {
+      _carregando = true;
+      _erroAoCarregar = null;
+    });
+
+    try {
+      final d = await ref.read(demandDetailProvider(widget.demandId!).future);
+      if (!mounted) return;
+
+      _tituloCtrl.text = d.titulo;
+      _descCtrl.text = d.descricao ?? '';
+
+      setState(() {
+        // Se o servidor devolver um valor fora da lista, mantem o padrao em vez
+        // de quebrar o seletor.
+        _status = _statuses.any((s) => s.$1 == d.status) ? d.status : 'pending';
+        _prioridade = _prioridades.any((p) => p.$1 == d.prioridade)
+            ? d.prioridade
+            : 'medium';
+        _tipo = _tipos.any((t) => t.$1 == d.tipo) ? d.tipo! : 'solicitacao';
+        _deadline = d.deadline != null ? DateTime.tryParse(d.deadline!) : null;
+        _selectedConstituent = d.constituentId != null
+            ? ConstituentModel(
+                id: d.constituentId!,
+                nome: d.constituentNome ?? 'Munícipe',
+              )
+            : null;
+        _carregando = false;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _carregando = false;
+        _erroAoCarregar = 'Não foi possível carregar a demanda';
+      });
+    }
+  }
+
   @override
   void dispose() {
     _tituloCtrl.dispose();
     _descCtrl.dispose();
-    _categoriaCtrl.dispose();
     _constituentSearchCtrl.dispose();
     super.dispose();
   }
@@ -73,15 +133,14 @@ class _DemandFormPageState extends ConsumerState<DemandFormPage> {
 
     final body = <String, dynamic>{
       'titulo': _tituloCtrl.text.trim(),
+      'descricao': _descCtrl.text.trim(),
       'status': _status,
       'prioridade': _prioridade,
-      if (_descCtrl.text.isNotEmpty) 'descricao': _descCtrl.text.trim(),
+      'tipo': _tipo,
       if (_selectedConstituent != null)
         'constituent_id': _selectedConstituent!.id,
       if (_deadline != null)
         'deadline': DateFormat('yyyy-MM-dd').format(_deadline!),
-      if (_categoriaCtrl.text.isNotEmpty)
-        'categoria': _categoriaCtrl.text.trim(),
     };
 
     final result = await ref
@@ -92,6 +151,8 @@ class _DemandFormPageState extends ConsumerState<DemandFormPage> {
 
     if (result != null) {
       ref.invalidate(demandListProvider);
+      // Sem isto a tela de detalhe volta a exibir os valores antigos em cache.
+      if (widget.isEdit) ref.invalidate(demandDetailProvider(widget.demandId!));
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
@@ -119,6 +180,34 @@ class _DemandFormPageState extends ConsumerState<DemandFormPage> {
     final formState = ref.watch(demandFormProvider);
     final cs = Theme.of(context).colorScheme;
 
+    if (_carregando) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('Editar Demanda')),
+        body: const Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    if (_erroAoCarregar != null) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('Editar Demanda')),
+        body: Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.error_outline_rounded, size: 40, color: cs.error),
+              const SizedBox(height: AppSpacing.sm),
+              Text(_erroAoCarregar!),
+              const SizedBox(height: AppSpacing.sm),
+              TextButton(
+                onPressed: _carregarDemanda,
+                child: const Text('Tentar novamente'),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
     return Scaffold(
       appBar: AppBar(
         title: Text(widget.isEdit ? 'Editar Demanda' : 'Nova Demanda'),
@@ -139,14 +228,17 @@ class _DemandFormPageState extends ConsumerState<DemandFormPage> {
               ),
               const SizedBox(height: AppSpacing.md),
 
-              // Descrição
+              // Descrição — obrigatoria no servidor (POST /demands recusa sem).
               TextFormField(
                 controller: _descCtrl,
                 maxLines: 4,
                 decoration: const InputDecoration(
-                  labelText: 'Descrição',
+                  labelText: 'Descrição *',
                   alignLabelWithHint: true,
                 ),
+                validator: (v) => v == null || v.trim().isEmpty
+                    ? 'Descrição é obrigatória'
+                    : null,
               ),
               const SizedBox(height: AppSpacing.md),
 
@@ -217,11 +309,19 @@ class _DemandFormPageState extends ConsumerState<DemandFormPage> {
               ),
               const SizedBox(height: AppSpacing.md),
 
-              // Categoria
-              AppInputField(
-                label: 'Categoria',
-                controller: _categoriaCtrl,
-                textInputAction: TextInputAction.done,
+              // Tipo — o campo antes se chamava "Categoria" e era texto livre
+              // que nenhum endpoint gravava. Aqui sao os mesmos valores do
+              // painel, para a demanda do app aparecer classificada la'.
+              DropdownButtonFormField<String>(
+                initialValue: _tipo,
+                decoration: const InputDecoration(labelText: 'Tipo'),
+                items: _tipos
+                    .map((t) => DropdownMenuItem(
+                          value: t.$1,
+                          child: Text(t.$2),
+                        ))
+                    .toList(),
+                onChanged: (v) => setState(() => _tipo = v ?? 'solicitacao'),
               ),
               const SizedBox(height: AppSpacing.xl),
 

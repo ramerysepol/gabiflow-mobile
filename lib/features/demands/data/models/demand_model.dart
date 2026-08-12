@@ -68,6 +68,38 @@ class DemandStatusCounts {
       );
 }
 
+/// O banco e o painel guardam status, prioridade e tipo em portugues
+/// (nova/media/solicitacao); o app fala ingles em toda a camada de tela
+/// (abas, chips, formulario). A traducao acontece so' aqui, na fronteira:
+/// normalizar na entrada evita espalhar `switch` por widget.
+const _statusDaApi = <String, String>{
+  'nova': 'pending',
+  'em_andamento': 'in_progress',
+  'concluida': 'completed',
+  'cancelada': 'cancelled',
+};
+
+const _prioridadeDaApi = <String, String>{
+  'baixa': 'low',
+  'media': 'medium',
+  'alta': 'high',
+  // O painel tem 'urgente', que o app nao oferece; cai em alta para nao
+  // perder a nocao de urgencia nem inventar uma opcao no seletor.
+  'urgente': 'high',
+};
+
+String _normalizarStatus(String? bruto) {
+  final v = (bruto ?? '').trim().toLowerCase();
+  if (v.isEmpty) return 'pending';
+  return _statusDaApi[v] ?? v;
+}
+
+String _normalizarPrioridade(String? bruto) {
+  final v = (bruto ?? '').trim().toLowerCase();
+  if (v.isEmpty) return 'medium';
+  return _prioridadeDaApi[v] ?? v;
+}
+
 class DemandModel {
   final String id;
   final String titulo;
@@ -77,7 +109,9 @@ class DemandModel {
   final String? constituentId;
   final String? constituentNome;
   final String? deadline;
-  final String? categoria;
+  /// Tipo da demanda no vocabulario do painel: solicitacao, reclamacao,
+  /// sugestao, servico, emenda, outro.
+  final String? tipo;
   final List<DemandNoteModel> notes;
   final List<DemandActivityModel> activities;
   final String? createdAt;
@@ -92,7 +126,7 @@ class DemandModel {
     this.constituentId,
     this.constituentNome,
     this.deadline,
-    this.categoria,
+    this.tipo,
     this.notes = const [],
     this.activities = const [],
     this.createdAt,
@@ -120,16 +154,18 @@ class DemandModel {
       titulo: json['titulo']?.toString() ?? json['title']?.toString() ?? '',
       descricao: json['descricao']?.toString() ??
           json['description']?.toString(),
-      status: json['status']?.toString() ?? 'pending',
-      prioridade: json['prioridade']?.toString() ??
-          json['priority']?.toString() ??
-          'medium',
+      status: _normalizarStatus(json['status']?.toString()),
+      prioridade: _normalizarPrioridade(
+        json['prioridade']?.toString() ?? json['priority']?.toString(),
+      ),
       constituentId: json['constituent_id']?.toString(),
       constituentNome: json['constituent_nome']?.toString() ??
           json['constituent_name']?.toString(),
-      deadline: json['deadline']?.toString(),
-      categoria: json['categoria']?.toString() ??
-          json['category']?.toString(),
+      // A listagem devolve `deadline`; o detalhe devolve `data_previsao`.
+      // Sem o segundo, o prazo sumia justamente na tela de edicao.
+      deadline: json['deadline']?.toString() ??
+          json['data_previsao']?.toString(),
+      tipo: json['tipo']?.toString() ?? json['type']?.toString(),
       notes: notes,
       activities: activities,
       createdAt: json['created_at']?.toString(),
