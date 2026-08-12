@@ -184,3 +184,47 @@ int _parseInt(dynamic v) {
   if (v is String) return int.tryParse(v) ?? 0;
   return 0;
 }
+
+/// Anexo de uma demanda. Espelha o retorno de
+/// GET/POST /api/mobile/demands/{id}/attachments
+class DemandAttachment {
+  final String id;
+  final String filename;
+  /// Caminho servido pelo servidor, ex.: /uploads/demands/12/1754-foto.jpg
+  final String url;
+  final String? fileType;
+  final int fileSize;
+  final DateTime? createdAt;
+
+  const DemandAttachment({
+    required this.id,
+    required this.filename,
+    required this.url,
+    this.fileType,
+    this.fileSize = 0,
+    this.createdAt,
+  });
+
+  bool get isImage => (fileType ?? '').startsWith('image/');
+
+  /// Tamanho legivel para exibir na lista.
+  String get tamanhoLegivel {
+    if (fileSize <= 0) return '';
+    if (fileSize < 1024) return '$fileSize B';
+    if (fileSize < 1024 * 1024) return '${(fileSize / 1024).toStringAsFixed(0)} KB';
+    return '${(fileSize / (1024 * 1024)).toStringAsFixed(1)} MB';
+  }
+
+  factory DemandAttachment.fromJson(Map<String, dynamic> json) {
+    return DemandAttachment(
+      id: json['id']?.toString() ?? '',
+      filename: json['filename'] as String? ?? 'anexo',
+      url: json['url'] as String? ?? '',
+      fileType: json['fileType'] as String?,
+      fileSize: _parseInt(json['fileSize']),
+      createdAt: json['createdAt'] != null
+          ? DateTime.tryParse(json['createdAt'].toString())
+          : null,
+    );
+  }
+}

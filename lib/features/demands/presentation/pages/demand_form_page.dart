@@ -169,7 +169,7 @@ class _DemandFormPageState extends ConsumerState<DemandFormPage> {
 
               // Status
               DropdownButtonFormField<String>(
-                value: _status,
+                initialValue: _status,
                 decoration: const InputDecoration(labelText: 'Status'),
                 items: _statuses
                     .map((s) => DropdownMenuItem(

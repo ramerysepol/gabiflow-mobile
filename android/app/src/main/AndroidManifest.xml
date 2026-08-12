@@ -1,6 +1,10 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <!-- Permissões para biometria -->
     <uses-permission android:name="android.permission.USE_BIOMETRIC"/>
+    <!-- Anexos de demanda. A camera e declarada como opcional (required=false)
+         para o app continuar instalavel em aparelho sem camera. -->
+    <uses-permission android:name="android.permission.CAMERA"/>
+    <uses-feature android:name="android.hardware.camera" android:required="false"/>
     
     <application
         android:label="gabiflow_mobile"

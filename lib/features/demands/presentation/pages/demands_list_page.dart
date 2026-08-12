@@ -23,6 +23,7 @@ class _DemandsListPageState extends ConsumerState<DemandsListPage>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
   final _scrollController = ScrollController();
+  final _searchController = TextEditingController();
 
   static const _tabs = [
     ('all', 'Todas'),
@@ -48,6 +49,7 @@ class _DemandsListPageState extends ConsumerState<DemandsListPage>
   void dispose() {
     _tabController.dispose();
     _scrollController.dispose();
+    _searchController.dispose();
     super.dispose();
   }
 
@@ -67,6 +69,37 @@ class _DemandsListPageState extends ConsumerState<DemandsListPage>
       body: SafeArea(
         child: Column(
           children: [
+            // Busca — a API ja procura em titulo, descricao e protocolo.
+            // Fica acima das abas porque o resultado atravessa os status:
+            // quem procura por nome nao sabe em qual aba a demanda esta.
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+              child: TextField(
+                controller: _searchController,
+                textInputAction: TextInputAction.search,
+                decoration: InputDecoration(
+                  hintText: 'Buscar por título, descrição ou protocolo',
+                  prefixIcon: const Icon(Icons.search),
+                  isDense: true,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(AppRadius.control),
+                  ),
+                  suffixIcon: state.searchTerm.isEmpty
+                      ? null
+                      : IconButton(
+                          icon: const Icon(Icons.close),
+                          tooltip: 'Limpar busca',
+                          onPressed: () {
+                            _searchController.clear();
+                            ref.read(demandListProvider.notifier).clearSearch();
+                            FocusScope.of(context).unfocus();
+                          },
+                        ),
+                ),
+                onChanged: (v) =>
+                    ref.read(demandListProvider.notifier).search(v),
+              ),
+            ),
             // TabBar com contadores
             TabBar(
               controller: _tabController,

@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
 
 import '../../../../core/theme/design_tokens.dart';
@@ -102,6 +103,54 @@ class _DemandDetailPageState extends ConsumerState<DemandDetailPage> {
     }
   }
 
+  /// Excluir pede confirmacao: no celular o toque errado e' facil, e a demanda
+  /// carrega notas, anexos e historico. A exclusao e' logica no servidor, mas o
+  /// usuario nao tem como desfazer pelo app — entao a pergunta e' obrigatoria.
+  Future<void> _confirmarExclusao(String titulo) async {
+    final confirmou = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Excluir demanda'),
+        content: Text(
+          '"$titulo" sairá da lista, junto com suas notas e anexos.\n\n'
+          'Só é possível recuperar pelo painel web.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancelar'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: Theme.of(ctx).colorScheme.error,
+            ),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Excluir'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmou != true) return;
+    HapticFeedback.mediumImpact();
+
+    final ok = await ref.read(demandFormProvider.notifier).delete(widget.id);
+    if (!mounted) return;
+
+    if (ok) {
+      ref.read(demandListProvider.notifier).refresh();
+      context.pop(); // volta para a lista — a demanda nao existe mais aqui
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Demanda excluída')),
+      );
+    } else {
+      final erro = ref.read(demandFormProvider).error;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(erro ?? 'Falha ao excluir')),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final asyncData = ref.watch(demandDetailProvider(widget.id));
@@ -111,10 +160,21 @@ class _DemandDetailPageState extends ConsumerState<DemandDetailPage> {
         title: const Text('Demanda'),
         actions: [
           asyncData.whenOrNull(
-                data: (d) => IconButton(
-                  icon: const Icon(Icons.edit_rounded),
-                  onPressed: () =>
-                      context.push('/home/demands/new?id=${widget.id}'),
+                data: (d) => Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    IconButton(
+                      icon: const Icon(Icons.edit_rounded),
+                      tooltip: 'Editar',
+                      onPressed: () =>
+                          context.push('/home/demands/new?id=${widget.id}'),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.delete_outline_rounded),
+                      tooltip: 'Excluir',
+                      onPressed: () => _confirmarExclusao(d.titulo),
+                    ),
+                  ],
                 ),
               ) ??
               const SizedBox.shrink(),
@@ -128,7 +188,7 @@ class _DemandDetailPageState extends ConsumerState<DemandDetailPage> {
             children: [
               const Icon(Icons.error_outline_rounded, size: 48),
               const SizedBox(height: AppSpacing.md),
-              Text('Erro ao carregar demanda'),
+              const Text('Erro ao carregar demanda'),
               TextButton(
                 onPressed: () =>
                     ref.refresh(demandDetailProvider(widget.id)),
@@ -360,9 +420,176 @@ class _DemandContent extends ConsumerWidget {
                 ),
               ),
 
+              // Anexos
+              const SizedBox(height: AppSpacing.lg),
+              _AnexosSection(demandId: demand.id),
+
               const SizedBox(height: AppSpacing.xxl),
             ]),
           ),
+        ),
+      ],
+    );
+  }
+}
+
+/// Anexos da demanda: lista o que ja foi enviado e permite tirar foto ou
+/// escolher da galeria.
+///
+/// No celular a camera e' o registro natural de campo — quem atende esta na
+/// rua e fotografa o problema na hora. Por isso a camera vem primeiro na folha
+/// de opcoes, e nao a galeria.
+class _AnexosSection extends ConsumerWidget {
+  const _AnexosSection({required this.demandId});
+
+  final String demandId;
+
+  Future<void> _escolher(BuildContext context, WidgetRef ref) async {
+    final origem = await showModalBottomSheet<ImageSource>(
+      context: context,
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.photo_camera_rounded),
+              title: const Text('Tirar foto'),
+              onTap: () => Navigator.pop(ctx, ImageSource.camera),
+            ),
+            ListTile(
+              leading: const Icon(Icons.photo_library_rounded),
+              title: const Text('Escolher da galeria'),
+              onTap: () => Navigator.pop(ctx, ImageSource.gallery),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (origem == null) return;
+
+    // Comprimir na origem: foto de celular passa de 10 MB com facilidade, e o
+    // servidor recusa acima disso. 1600px e 80% mantem legivel um documento
+    // fotografado sem estourar o limite nem a franquia de dados de quem esta
+    // em campo.
+    final XFile? foto = await ImagePicker().pickImage(
+      source: origem,
+      maxWidth: 1600,
+      imageQuality: 80,
+    );
+    if (foto == null || !context.mounted) return;
+
+    final ok = await ref
+        .read(attachmentUploadProvider.notifier)
+        .upload(demandId, foto.path);
+
+    if (!context.mounted) return;
+
+    if (ok) {
+      ref.invalidate(demandAttachmentsProvider(demandId));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Anexo enviado')),
+      );
+    } else {
+      final erro = ref.read(attachmentUploadProvider).error;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(erro ?? 'Falha ao enviar anexo')),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final cs = Theme.of(context).colorScheme;
+    final anexos = ref.watch(demandAttachmentsProvider(demandId));
+    final enviando = ref.watch(attachmentUploadProvider).isUploading;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text('Anexos',
+                style: Theme.of(context)
+                    .textTheme
+                    .titleSmall
+                    ?.copyWith(color: cs.primary)),
+            if (enviando)
+              const Padding(
+                padding: EdgeInsets.all(12),
+                child: SizedBox(
+                  width: 18,
+                  height: 18,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                ),
+              )
+            else
+              IconButton(
+                icon: const Icon(Icons.add_a_photo_rounded),
+                tooltip: 'Adicionar anexo',
+                onPressed: () => _escolher(context, ref),
+              ),
+          ],
+        ),
+        anexos.when(
+          loading: () => const Padding(
+            padding: EdgeInsets.symmetric(vertical: 8),
+            child: LinearProgressIndicator(),
+          ),
+          error: (e, _) => Row(
+            children: [
+              Expanded(
+                child: Text('Não foi possível carregar os anexos',
+                    style: Theme.of(context)
+                        .textTheme
+                        .bodySmall
+                        ?.copyWith(color: cs.error)),
+              ),
+              TextButton(
+                onPressed: () =>
+                    ref.invalidate(demandAttachmentsProvider(demandId)),
+                child: const Text('Tentar de novo'),
+              ),
+            ],
+          ),
+          data: (lista) {
+            if (lista.isEmpty) {
+              return Text('Nenhum anexo',
+                  style: Theme.of(context)
+                      .textTheme
+                      .bodySmall
+                      ?.copyWith(color: cs.onSurfaceVariant));
+            }
+            return Column(
+              children: lista
+                  .map((a) => Card(
+                        margin: const EdgeInsets.only(bottom: AppSpacing.sm),
+                        child: ListTile(
+                          leading: Icon(
+                            a.isImage
+                                ? Icons.image_rounded
+                                : Icons.picture_as_pdf_rounded,
+                            color: cs.primary,
+                          ),
+                          title: Text(
+                            a.filename,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: Theme.of(context).textTheme.bodyMedium,
+                          ),
+                          subtitle: Text(
+                            [
+                              if (a.tamanhoLegivel.isNotEmpty) a.tamanhoLegivel,
+                              if (a.createdAt != null)
+                                DateFormat('dd/MM HH:mm').format(a.createdAt!),
+                            ].join(' · '),
+                            style: Theme.of(context).textTheme.bodySmall,
+                          ),
+                        ),
+                      ))
+                  .toList(),
+            );
+          },
         ),
       ],
     );
