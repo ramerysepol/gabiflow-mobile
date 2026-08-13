@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../../../core/auth/permissoes.dart';
 import '../../../../core/theme/design_tokens.dart';
 import '../../../../core/widgets/shimmer_skeleton.dart';
 import '../providers/event_provider.dart';
@@ -19,25 +20,37 @@ class EventDetailPage extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final asyncData = ref.watch(eventDetailProvider(id));
 
+    // Quem so' tem `schedule:view` continua consultando a agenda, mas sem os
+    // botoes de alterar — o servidor recusaria de qualquer forma.
+    if (!ref.watch(temPermissaoProvider(Permissoes.agendaVer))) {
+      return const SemPermissao(titulo: 'Compromisso');
+    }
+
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Evento'),
+        title: const Text('Compromisso'),
         actions: [
           asyncData.whenOrNull(
-                data: (e) => IconButton(
-                  icon: const Icon(Icons.edit_rounded),
-                  onPressed: () {
-                    HapticFeedback.lightImpact();
-                    context.push('/home/agenda/new?id=$id');
-                  },
+                data: (e) => SePodeVer(
+                  permissao: Permissoes.agendaEditar,
+                  child: IconButton(
+                    icon: const Icon(Icons.edit_rounded),
+                    onPressed: () {
+                      HapticFeedback.lightImpact();
+                      context.push('/home/agenda/new?id=$id');
+                    },
+                  ),
                 ),
               ) ??
               const SizedBox.shrink(),
           asyncData.whenOrNull(
-                data: (_) => IconButton(
-                  icon: Icon(Icons.delete_rounded,
-                      color: Theme.of(context).colorScheme.error),
-                  onPressed: () => _confirmDelete(context, ref),
+                data: (_) => SePodeVer(
+                  permissao: Permissoes.agendaExcluir,
+                  child: IconButton(
+                    icon: Icon(Icons.delete_rounded,
+                        color: Theme.of(context).colorScheme.error),
+                    onPressed: () => _confirmDelete(context, ref),
+                  ),
                 ),
               ) ??
               const SizedBox.shrink(),

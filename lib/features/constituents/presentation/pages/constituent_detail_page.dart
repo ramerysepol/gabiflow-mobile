@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../../../core/auth/permissoes.dart';
 import '../../../../core/theme/design_tokens.dart';
 import '../../../../core/widgets/shimmer_skeleton.dart';
 import '../../../whatsapp/presentation/widgets/whatsapp_send_sheet.dart';
@@ -50,14 +51,20 @@ class ConstituentDetailPage extends ConsumerWidget {
               expandedHeight: 220,
               pinned: true,
               actions: [
-                IconButton(
-                  icon: const Icon(Icons.edit_rounded),
-                  tooltip: 'Editar',
-                  onPressed: () {
-                    HapticFeedback.lightImpact();
-                    context.push('/home/constituents/$id/edit');
-                  },
+                SePodeVer(
+                  permissao: Permissoes.eleitoresEditar,
+                  child: IconButton(
+                    icon: const Icon(Icons.edit_rounded),
+                    tooltip: 'Editar',
+                    onPressed: () {
+                      HapticFeedback.lightImpact();
+                      context.push('/home/constituents/$id/edit');
+                    },
+                  ),
                 ),
+                // O menu inteiro some sem permissao de excluir, porque hoje
+                // "excluir" e' o unico item dele.
+                if (ref.watch(temPermissaoProvider(Permissoes.eleitoresExcluir)))
                 PopupMenuButton<String>(
                   onSelected: (v) {
                     if (v == 'excluir') _confirmarExclusao(context, ref, c.nome);

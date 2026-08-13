@@ -10,6 +10,24 @@ int _parseId(dynamic value) {
   return 0;
 }
 
+/// Permissoes efetivas vindas de /auth/login e /auth/me, no formato
+/// `modulo:acao` (ex.: `schedule:create`). Sao as MESMAS que o servidor aplica
+/// em cada rota — aqui servem so' para a tela nao oferecer o que vai ser
+/// recusado.
+///
+/// Aceita Map por tolerancia: o campo existia tipado assim antes de a API
+/// passar a devolver lista, e um app antigo lendo uma resposta nova (ou o
+/// contrario) nao pode quebrar no login.
+List<String> _parsePermissions(dynamic value) {
+  if (value is List) {
+    return value.map((e) => e.toString()).toList();
+  }
+  if (value is Map) {
+    return value.keys.map((e) => e.toString()).toList();
+  }
+  return const <String>[];
+}
+
 @freezed
 class UserModel with _$UserModel {
   const factory UserModel({
@@ -27,7 +45,9 @@ class UserModel with _$UserModel {
     @JsonKey(name: 'is_active') bool? isActive,
     @JsonKey(name: 'created_at') DateTime? createdAt,
     @JsonKey(name: 'updated_at') DateTime? updatedAt,
-    Map<String, dynamic>? permissions,
+    @JsonKey(fromJson: _parsePermissions)
+    @Default(<String>[])
+    List<String> permissions,
     Map<String, dynamic>? preferences,
   }) = _UserModel;
 

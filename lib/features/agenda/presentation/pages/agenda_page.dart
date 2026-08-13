@@ -6,9 +6,11 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:table_calendar/table_calendar.dart';
 
+import '../../../../core/auth/permissoes.dart';
 import '../../../../core/theme/design_tokens.dart';
 import '../../../../core/widgets/app_empty_state.dart';
 import '../../../../core/widgets/shimmer_skeleton.dart';
+import '../../data/models/agenda_tipos.dart';
 import '../../data/models/event_model.dart';
 import '../providers/event_provider.dart';
 
@@ -113,13 +115,18 @@ class _AgendaPageState extends ConsumerState<AgendaPage> {
           ),
         ),
       ),
-      floatingActionButton: FloatingActionButton(
-        heroTag: 'fab_agenda',
-        onPressed: () {
-          HapticFeedback.lightImpact();
-          context.push('/home/agenda/new');
-        },
-        child: const Icon(Icons.add_rounded),
+      // Sem `schedule:create` o botao nem aparece — oferecer e depois recusar
+      // com 403 seria pior do que nao oferecer.
+      floatingActionButton: SePodeVer(
+        permissao: Permissoes.agendaCriar,
+        child: FloatingActionButton(
+          heroTag: 'fab_agenda',
+          onPressed: () {
+            HapticFeedback.lightImpact();
+            context.push('/home/agenda/new');
+          },
+          child: const Icon(Icons.add_rounded),
+        ),
       ),
     );
   }
@@ -128,12 +135,17 @@ class _AgendaPageState extends ConsumerState<AgendaPage> {
     final events = state.eventsForDay(_selectedDay);
 
     if (events.isEmpty) {
+      // Quem nao pode criar nao deve ler "Toque em + para criar": o botao nao
+      // existe para essa pessoa, e a frase viraria uma instrucao impossivel.
+      final podeCriar = ref.watch(temPermissaoProvider(Permissoes.agendaCriar));
       return SliverToBoxAdapter(
         child: Padding(
           padding: const EdgeInsets.only(top: AppSpacing.md),
           child: AppEmptyState(
-            title: 'Sem eventos',
-            subtitle: 'Nenhum evento para este dia.\nToque em + para criar.',
+            title: 'Sem compromissos',
+            subtitle: podeCriar
+                ? 'Nenhum compromisso para este dia.\nToque em + para criar.'
+                : 'Nenhum compromisso para este dia.',
           ),
         ),
       );
@@ -168,28 +180,10 @@ class _EventTile extends StatelessWidget {
 
   final EventModel event;
 
-  Color _typeColor(BuildContext context, String type) {
-    final cs = Theme.of(context).colorScheme;
-    return switch (type) {
-      'reuniao' || 'reunião' => cs.primary,
-      'visita' => AppColors.successLight,
-      'plenario' || 'plenário' => AppColors.warningLight,
-      'agenda_publica' || 'agenda pública' => AppColors.infoLight,
-      _ => cs.secondary,
-    };
-  }
-
-  String _typeLabel(String type) => switch (type) {
-        'reuniao' || 'reunião' => 'Reunião',
-        'visita' => 'Visita',
-        'plenario' || 'plenário' => 'Plenário',
-        'agenda_publica' => 'Ag. Pública',
-        _ => 'Evento',
-      };
-
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
+    final tipo = agendaTipoDe(event.type);
     final start = DateTime.tryParse(event.startDate);
     final end = event.endDate != null
         ? DateTime.tryParse(event.endDate!)
@@ -207,7 +201,7 @@ class _EventTile extends StatelessWidget {
               Container(
                 width: 4,
                 decoration: BoxDecoration(
-                  color: _typeColor(context, event.type),
+                  color: tipo.cor,
                   borderRadius: const BorderRadius.only(
                     topLeft: Radius.circular(AppRadius.card),
                     bottomLeft: Radius.circular(AppRadius.card),
@@ -231,19 +225,33 @@ class _EventTile extends StatelessWidget {
                               overflow: TextOverflow.ellipsis,
                             ),
                           ),
+                          // Privado e sincronizado sao informacoes que mudam o
+                          // que a pessoa espera do compromisso, entao ficam no
+                          // topo do card, junto do tipo.
+                          if (event.privado)
+                            Padding(
+                              padding: const EdgeInsets.only(right: 4),
+                              child: Icon(Icons.lock_outline_rounded,
+                                  size: 13, color: cs.onSurfaceVariant),
+                            ),
+                          if (event.sincronizadoGoogle)
+                            Padding(
+                              padding: const EdgeInsets.only(right: 4),
+                              child: Icon(Icons.event_available_rounded,
+                                  size: 13, color: cs.onSurfaceVariant),
+                            ),
                           Container(
                             padding: const EdgeInsets.symmetric(
                                 horizontal: 6, vertical: 2),
                             decoration: BoxDecoration(
-                              color: _typeColor(context, event.type)
-                                  .withValues(alpha: 0.15),
+                              color: tipo.cor.withValues(alpha: 0.15),
                               borderRadius: BorderRadius.circular(
                                   AppRadius.full),
                             ),
                             child: Text(
-                              _typeLabel(event.type),
+                              agendaTipoRotuloCurto(event.type),
                               style: TextStyle(
-                                color: _typeColor(context, event.type),
+                                color: tipo.cor,
                                 fontSize: 10,
                                 fontWeight: FontWeight.bold,
                               ),
@@ -251,7 +259,23 @@ class _EventTile extends StatelessWidget {
                           ),
                         ],
                       ),
-                      if (start != null) ...[
+                      if (event.diaTodo) ...[
+                        const SizedBox(height: 4),
+                        Row(
+                          children: [
+                            Icon(Icons.today_rounded,
+                                size: 14, color: cs.onSurfaceVariant),
+                            const SizedBox(width: 4),
+                            Text(
+                              'Dia todo',
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .bodySmall
+                                  ?.copyWith(color: cs.onSurfaceVariant),
+                            ),
+                          ],
+                        ),
+                      ] else if (start != null) ...[
                         const SizedBox(height: 4),
                         Row(
                           children: [

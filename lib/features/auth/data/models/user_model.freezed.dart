@@ -39,7 +39,8 @@ mixin _$UserModel {
   DateTime? get createdAt => throw _privateConstructorUsedError;
   @JsonKey(name: 'updated_at')
   DateTime? get updatedAt => throw _privateConstructorUsedError;
-  Map<String, dynamic>? get permissions => throw _privateConstructorUsedError;
+  @JsonKey(fromJson: _parsePermissions)
+  List<String> get permissions => throw _privateConstructorUsedError;
   Map<String, dynamic>? get preferences => throw _privateConstructorUsedError;
 
   /// Serializes this UserModel to a JSON map.
@@ -70,7 +71,7 @@ abstract class $UserModelCopyWith<$Res> {
     @JsonKey(name: 'is_active') bool? isActive,
     @JsonKey(name: 'created_at') DateTime? createdAt,
     @JsonKey(name: 'updated_at') DateTime? updatedAt,
-    Map<String, dynamic>? permissions,
+    @JsonKey(fromJson: _parsePermissions) List<String> permissions,
     Map<String, dynamic>? preferences,
   });
 }
@@ -102,7 +103,7 @@ class _$UserModelCopyWithImpl<$Res, $Val extends UserModel>
     Object? isActive = freezed,
     Object? createdAt = freezed,
     Object? updatedAt = freezed,
-    Object? permissions = freezed,
+    Object? permissions = null,
     Object? preferences = freezed,
   }) {
     return _then(
@@ -155,10 +156,10 @@ class _$UserModelCopyWithImpl<$Res, $Val extends UserModel>
                 ? _value.updatedAt
                 : updatedAt // ignore: cast_nullable_to_non_nullable
                       as DateTime?,
-            permissions: freezed == permissions
+            permissions: null == permissions
                 ? _value.permissions
                 : permissions // ignore: cast_nullable_to_non_nullable
-                      as Map<String, dynamic>?,
+                      as List<String>,
             preferences: freezed == preferences
                 ? _value.preferences
                 : preferences // ignore: cast_nullable_to_non_nullable
@@ -191,7 +192,7 @@ abstract class _$$UserModelImplCopyWith<$Res>
     @JsonKey(name: 'is_active') bool? isActive,
     @JsonKey(name: 'created_at') DateTime? createdAt,
     @JsonKey(name: 'updated_at') DateTime? updatedAt,
-    Map<String, dynamic>? permissions,
+    @JsonKey(fromJson: _parsePermissions) List<String> permissions,
     Map<String, dynamic>? preferences,
   });
 }
@@ -222,7 +223,7 @@ class __$$UserModelImplCopyWithImpl<$Res>
     Object? isActive = freezed,
     Object? createdAt = freezed,
     Object? updatedAt = freezed,
-    Object? permissions = freezed,
+    Object? permissions = null,
     Object? preferences = freezed,
   }) {
     return _then(
@@ -275,10 +276,10 @@ class __$$UserModelImplCopyWithImpl<$Res>
             ? _value.updatedAt
             : updatedAt // ignore: cast_nullable_to_non_nullable
                   as DateTime?,
-        permissions: freezed == permissions
+        permissions: null == permissions
             ? _value._permissions
             : permissions // ignore: cast_nullable_to_non_nullable
-                  as Map<String, dynamic>?,
+                  as List<String>,
         preferences: freezed == preferences
             ? _value._preferences
             : preferences // ignore: cast_nullable_to_non_nullable
@@ -304,7 +305,8 @@ class _$UserModelImpl implements _UserModel {
     @JsonKey(name: 'is_active') this.isActive,
     @JsonKey(name: 'created_at') this.createdAt,
     @JsonKey(name: 'updated_at') this.updatedAt,
-    final Map<String, dynamic>? permissions,
+    @JsonKey(fromJson: _parsePermissions)
+    final List<String> permissions = const <String>[],
     final Map<String, dynamic>? preferences,
   }) : _permissions = permissions,
        _preferences = preferences;
@@ -342,14 +344,13 @@ class _$UserModelImpl implements _UserModel {
   @override
   @JsonKey(name: 'updated_at')
   final DateTime? updatedAt;
-  final Map<String, dynamic>? _permissions;
+  final List<String> _permissions;
   @override
-  Map<String, dynamic>? get permissions {
-    final value = _permissions;
-    if (value == null) return null;
-    if (_permissions is EqualUnmodifiableMapView) return _permissions;
+  @JsonKey(fromJson: _parsePermissions)
+  List<String> get permissions {
+    if (_permissions is EqualUnmodifiableListView) return _permissions;
     // ignore: implicit_dynamic_type
-    return EqualUnmodifiableMapView(value);
+    return EqualUnmodifiableListView(_permissions);
   }
 
   final Map<String, dynamic>? _preferences;
@@ -447,7 +448,7 @@ abstract class _UserModel implements UserModel {
     @JsonKey(name: 'is_active') final bool? isActive,
     @JsonKey(name: 'created_at') final DateTime? createdAt,
     @JsonKey(name: 'updated_at') final DateTime? updatedAt,
-    final Map<String, dynamic>? permissions,
+    @JsonKey(fromJson: _parsePermissions) final List<String> permissions,
     final Map<String, dynamic>? preferences,
   }) = _$UserModelImpl;
 
@@ -484,7 +485,8 @@ abstract class _UserModel implements UserModel {
   @JsonKey(name: 'updated_at')
   DateTime? get updatedAt;
   @override
-  Map<String, dynamic>? get permissions;
+  @JsonKey(fromJson: _parsePermissions)
+  List<String> get permissions;
   @override
   Map<String, dynamic>? get preferences;
 

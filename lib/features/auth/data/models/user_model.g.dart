@@ -24,7 +24,9 @@ _$UserModelImpl _$$UserModelImplFromJson(Map<String, dynamic> json) =>
       updatedAt: json['updated_at'] == null
           ? null
           : DateTime.parse(json['updated_at'] as String),
-      permissions: json['permissions'] as Map<String, dynamic>?,
+      permissions: json['permissions'] == null
+          ? const <String>[]
+          : _parsePermissions(json['permissions']),
       preferences: json['preferences'] as Map<String, dynamic>?,
     );
 

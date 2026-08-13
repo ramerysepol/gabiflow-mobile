@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../../../core/auth/permissoes.dart';
 import '../../../../core/theme/design_tokens.dart';
 import '../../../../core/widgets/app_empty_state.dart';
 import '../../../../core/widgets/shimmer_skeleton.dart';
@@ -88,13 +89,16 @@ class _ConstituentsListPageState extends ConsumerState<ConstituentsListPage> {
           ],
         ),
       ),
-      floatingActionButton: FloatingActionButton(
-        heroTag: 'fab_constituents',
-        onPressed: () {
-          HapticFeedback.lightImpact();
-          context.push('/home/constituents/new');
-        },
-        child: const Icon(Icons.person_add_rounded),
+      floatingActionButton: SePodeVer(
+        permissao: Permissoes.eleitoresCriar,
+        child: FloatingActionButton(
+          heroTag: 'fab_constituents',
+          onPressed: () {
+            HapticFeedback.lightImpact();
+            context.push('/home/constituents/new');
+          },
+          child: const Icon(Icons.person_add_rounded),
+        ),
       ),
     );
   }

@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
 
+import '../../../../core/auth/permissoes.dart';
 import '../../../../core/theme/design_tokens.dart';
 import '../../../../core/widgets/primary_button.dart';
 import '../../../../core/widgets/shimmer_skeleton.dart';
@@ -163,16 +164,22 @@ class _DemandDetailPageState extends ConsumerState<DemandDetailPage> {
                 data: (d) => Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    IconButton(
-                      icon: const Icon(Icons.edit_rounded),
-                      tooltip: 'Editar',
-                      onPressed: () =>
-                          context.push('/home/demands/new?id=${widget.id}'),
+                    SePodeVer(
+                      permissao: Permissoes.demandasEditar,
+                      child: IconButton(
+                        icon: const Icon(Icons.edit_rounded),
+                        tooltip: 'Editar',
+                        onPressed: () =>
+                            context.push('/home/demands/new?id=${widget.id}'),
+                      ),
                     ),
-                    IconButton(
-                      icon: const Icon(Icons.delete_outline_rounded),
-                      tooltip: 'Excluir',
-                      onPressed: () => _confirmarExclusao(d.titulo),
+                    SePodeVer(
+                      permissao: Permissoes.demandasExcluir,
+                      child: IconButton(
+                        icon: const Icon(Icons.delete_outline_rounded),
+                        tooltip: 'Excluir',
+                        onPressed: () => _confirmarExclusao(d.titulo),
+                      ),
                     ),
                   ],
                 ),

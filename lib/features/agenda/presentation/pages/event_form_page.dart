@@ -4,11 +4,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
+import '../../../../core/auth/permissoes.dart';
 import '../../../../core/theme/design_tokens.dart';
 import '../../../../core/widgets/app_input_field.dart';
 import '../../../../core/widgets/primary_button.dart';
 import '../../../constituents/data/models/constituent_model.dart';
 import '../../../constituents/presentation/providers/constituent_provider.dart';
+import '../../data/models/agenda_tipos.dart';
 import '../providers/event_provider.dart';
 
 class EventFormPage extends ConsumerStatefulWidget {
@@ -35,15 +37,68 @@ class _EventFormPageState extends ConsumerState<EventFormPage> {
   DateTime? _endDate;
   TimeOfDay? _endTime;
   String _type = 'reuniao';
+  bool _diaTodo = false;
+  bool _privado = false;
   final List<ConstituentModel> _participants = [];
 
-  static const _types = [
-    ('reuniao', 'Reunião'),
-    ('visita', 'Visita'),
-    ('plenario', 'Plenário'),
-    ('agenda_publica', 'Agenda Pública'),
-    ('outro', 'Outro'),
-  ];
+  /// Na edicao os campos so' aparecem depois que o evento chega do servidor.
+  bool _carregando = false;
+  String? _erroAoCarregar;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.isEdit) _carregarEvento();
+  }
+
+  /// Preenche o formulario com o que esta' gravado. Sem isto a tela de edicao
+  /// abria em branco e salvar apagava titulo, local e horario do compromisso.
+  Future<void> _carregarEvento() async {
+    setState(() {
+      _carregando = true;
+      _erroAoCarregar = null;
+    });
+
+    try {
+      final e = await ref.read(eventDetailProvider(widget.eventId!).future);
+      if (!mounted) return;
+
+      _tituloCtrl.text = e.titulo;
+      _descCtrl.text = e.descricao ?? '';
+      _locationCtrl.text = e.location ?? '';
+
+      final inicio = DateTime.tryParse(e.startDate);
+      final fim = e.endDate != null ? DateTime.tryParse(e.endDate!) : null;
+
+      setState(() {
+        _type = agendaTipoDe(e.type).valor;
+        _diaTodo = e.diaTodo;
+        _privado = e.privado;
+        if (inicio != null) {
+          _startDate = inicio;
+          _startTime = TimeOfDay.fromDateTime(inicio);
+        }
+        if (fim != null) {
+          _endDate = fim;
+          _endTime = TimeOfDay.fromDateTime(fim);
+        }
+        _participants
+          ..clear()
+          // Participante da agenda e' nome livre, nao um eleitor cadastrado —
+          // o id aqui e' o da propria linha em agenda_participantes.
+          ..addAll(e.participants.map(
+            (p) => ConstituentModel(id: p.id, nome: p.nome, telefone: p.telefone),
+          ));
+        _carregando = false;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _carregando = false;
+        _erroAoCarregar = 'Não foi possível carregar o compromisso';
+      });
+    }
+  }
 
   @override
   void dispose() {
@@ -114,17 +169,40 @@ class _EventFormPageState extends ConsumerState<EventFormPage> {
       );
       return;
     }
+    // Fim antes do inicio passava direto e so' aparecia como evento torto na
+    // agenda; o servidor tambem recusa, mas avisar aqui evita a ida e volta.
+    if (_endDate != null) {
+      final ini = DateTime.parse(_buildIso(_startDate, _startTime));
+      final fim = DateTime.parse(_buildIso(_endDate, _endTime));
+      if (fim.isBefore(ini)) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('O término não pode ser antes do início')),
+        );
+        return;
+      }
+    }
+
     HapticFeedback.mediumImpact();
 
     final body = <String, dynamic>{
       'titulo': _tituloCtrl.text.trim(),
       'start_date': _buildIso(_startDate, _startTime),
-      'type': _type,
+      'agenda_tipo': _type,
+      'dia_todo': _diaTodo,
+      'privado': _privado,
       if (_descCtrl.text.isNotEmpty) 'descricao': _descCtrl.text.trim(),
       if (_endDate != null) 'end_date': _buildIso(_endDate, _endTime),
       if (_locationCtrl.text.isNotEmpty) 'location': _locationCtrl.text.trim(),
-      if (_participants.isNotEmpty)
-        'participant_ids': _participants.map((p) => p.id).toList(),
+      // A agenda guarda participante por nome/telefone, nao por id de eleitor.
+      // Enviar `participant_ids` fazia os convidados serem descartados sem
+      // aviso — nem chegavam ao banco.
+      'participants': _participants
+          .map((p) => {
+                'nome': p.nome,
+                if (p.telefone != null) 'telefone': p.telefone,
+                if (p.email != null) 'email': p.email,
+              })
+          .toList(),
     };
 
     final result = await ref
@@ -135,6 +213,8 @@ class _EventFormPageState extends ConsumerState<EventFormPage> {
 
     if (result != null) {
       ref.read(eventListProvider.notifier).refresh();
+      // Sem invalidar, a tela de detalhe volta com os valores em cache.
+      if (widget.isEdit) ref.invalidate(eventDetailProvider(widget.eventId!));
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
@@ -160,9 +240,47 @@ class _EventFormPageState extends ConsumerState<EventFormPage> {
     final formState = ref.watch(eventFormProvider);
     final cs = Theme.of(context).colorScheme;
 
+    // Chegar aqui sem permissao so' acontece por link direto ou por um item de
+    // menu que ficou visivel; melhor explicar do que deixar salvar e tomar 403.
+    final permissaoNecessaria =
+        widget.isEdit ? Permissoes.agendaEditar : Permissoes.agendaCriar;
+    if (!ref.watch(temPermissaoProvider(permissaoNecessaria))) {
+      return const SemPermissao(titulo: 'Compromisso');
+    }
+
+    if (_carregando) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('Editar Compromisso')),
+        body: const Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    if (_erroAoCarregar != null) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('Editar Compromisso')),
+        body: Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.error_outline_rounded, size: 40, color: cs.error),
+              const SizedBox(height: AppSpacing.sm),
+              Text(_erroAoCarregar!),
+              const SizedBox(height: AppSpacing.sm),
+              TextButton(
+                onPressed: _carregarEvento,
+                child: const Text('Tentar novamente'),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.isEdit ? 'Editar Evento' : 'Novo Evento'),
+        title: Text(
+          widget.isEdit ? 'Editar Compromisso' : 'Novo Compromisso',
+        ),
       ),
       body: SafeArea(
         child: Form(
@@ -180,20 +298,55 @@ class _EventFormPageState extends ConsumerState<EventFormPage> {
               ),
               const SizedBox(height: AppSpacing.md),
 
-              // Tipo
+              // Tipo — mesma lista e mesmas cores do painel (agendaTipos).
               DropdownButtonFormField<String>(
-                // ignore: deprecated_member_use
-                value: _type,
+                initialValue: _type,
                 decoration: const InputDecoration(labelText: 'Tipo'),
-                items: _types
+                items: agendaTipos
                     .map((t) => DropdownMenuItem(
-                          value: t.$1,
-                          child: Text(t.$2),
+                          value: t.valor,
+                          child: Row(
+                            children: [
+                              Container(
+                                width: 10,
+                                height: 10,
+                                decoration: BoxDecoration(
+                                  color: t.cor,
+                                  shape: BoxShape.circle,
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Flexible(
+                                child: Text(
+                                  t.rotulo,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ],
+                          ),
                         ))
                     .toList(),
-                onChanged: (v) => setState(() => _type = v ?? 'reuniao'),
+                onChanged: (v) => setState(() => _type = v ?? 'outro'),
               ),
-              const SizedBox(height: AppSpacing.md),
+              const SizedBox(height: AppSpacing.sm),
+
+              // Dia todo e privado — colunas que o painel ja' usa e o app
+              // ignorava por completo.
+              SwitchListTile.adaptive(
+                contentPadding: EdgeInsets.zero,
+                value: _diaTodo,
+                onChanged: (v) => setState(() => _diaTodo = v),
+                title: const Text('Dia todo'),
+                subtitle: const Text('Ocupa o dia inteiro, sem horário'),
+              ),
+              SwitchListTile.adaptive(
+                contentPadding: EdgeInsets.zero,
+                value: _privado,
+                onChanged: (v) => setState(() => _privado = v),
+                title: const Text('Privado'),
+                subtitle: const Text('Não aparece na agenda pública'),
+              ),
+              const SizedBox(height: AppSpacing.sm),
 
               // Data/hora início
               InkWell(
