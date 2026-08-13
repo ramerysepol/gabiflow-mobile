@@ -88,7 +88,6 @@ class _FormScaffoldState extends ConsumerState<_FormScaffold> {
   late final TextEditingController _cpfCtrl;
   late final TextEditingController _emailCtrl;
   late final TextEditingController _telefoneCtrl;
-  late final TextEditingController _whatsappCtrl;
   late final TextEditingController _enderecoCtrl;
   late final TextEditingController _numeroCtrl;
   late final TextEditingController _complementoCtrl;
@@ -111,10 +110,6 @@ class _FormScaffoldState extends ConsumerState<_FormScaffold> {
     filter: {'#': RegExp(r'[0-9]')},
   );
   final _phoneMask = MaskTextInputFormatter(
-    mask: '(##) #####-####',
-    filter: {'#': RegExp(r'[0-9]')},
-  );
-  final _whatsMask = MaskTextInputFormatter(
     mask: '(##) #####-####',
     filter: {'#': RegExp(r'[0-9]')},
   );
@@ -146,8 +141,6 @@ class _FormScaffoldState extends ConsumerState<_FormScaffold> {
     _emailCtrl = TextEditingController(text: e?.email ?? '');
     _telefoneCtrl = TextEditingController(
         text: e?.telefone != null ? _phoneMask.maskText(e!.telefone!) : '');
-    _whatsappCtrl = TextEditingController(
-        text: e?.whatsapp != null ? _whatsMask.maskText(e!.whatsapp!) : '');
     _enderecoCtrl = TextEditingController(text: e?.endereco ?? '');
     _numeroCtrl = TextEditingController(text: e?.numero ?? '');
     _complementoCtrl = TextEditingController(text: e?.complemento ?? '');
@@ -172,7 +165,7 @@ class _FormScaffoldState extends ConsumerState<_FormScaffold> {
   @override
   void dispose() {
     for (final c in [
-      _nomeCtrl, _cpfCtrl, _emailCtrl, _telefoneCtrl, _whatsappCtrl,
+      _nomeCtrl, _cpfCtrl, _emailCtrl, _telefoneCtrl,
       _enderecoCtrl, _numeroCtrl, _complementoCtrl, _bairroCtrl,
       _cidadeCtrl, _cepCtrl, _profissaoCtrl, _notesCtrl, _tagInputCtrl,
     ]) {
@@ -229,7 +222,6 @@ class _FormScaffoldState extends ConsumerState<_FormScaffold> {
       'cpf': _cpfCtrl.text.replaceAll(RegExp(r'\D'), ''),
       'email': limpo(_emailCtrl),
       'telefone': _telefoneCtrl.text.replaceAll(RegExp(r'\D'), ''),
-      'whatsapp': _whatsappCtrl.text.replaceAll(RegExp(r'\D'), ''),
       'endereco': limpo(_enderecoCtrl),
       'numero': limpo(_numeroCtrl),
       'complemento': limpo(_complementoCtrl),
@@ -403,6 +395,12 @@ class _FormScaffoldState extends ConsumerState<_FormScaffold> {
               const SizedBox(height: AppSpacing.md),
               Row(
                 children: [
+                  // Campo unico: `eleitores` guarda so' `telefone` — conferido
+                  // nos 14 bancos, nao existe coluna `whatsapp` em nenhum, e o
+                  // painel tambem so' tem um telefone. Havia um segundo campo
+                  // "WhatsApp" aqui cujo conteudo era descartado sem aviso: na
+                  // criacao virava alternativa ao telefone (perdia quando os
+                  // dois vinham preenchidos) e na edicao era ignorado de vez.
                   Expanded(
                     child: TextFormField(
                       controller: _telefoneCtrl,
@@ -410,20 +408,10 @@ class _FormScaffoldState extends ConsumerState<_FormScaffold> {
                       textInputAction: TextInputAction.next,
                       inputFormatters: [_phoneMask],
                       validator: _validarTelefone,
-                      decoration:
-                          const InputDecoration(labelText: 'Telefone'),
-                    ),
-                  ),
-                  const SizedBox(width: AppSpacing.sm),
-                  Expanded(
-                    child: TextFormField(
-                      controller: _whatsappCtrl,
-                      keyboardType: TextInputType.phone,
-                      textInputAction: TextInputAction.next,
-                      inputFormatters: [_whatsMask],
-                      validator: _validarTelefone,
-                      decoration:
-                          const InputDecoration(labelText: 'WhatsApp'),
+                      decoration: const InputDecoration(
+                        labelText: 'Telefone / WhatsApp',
+                        helperText: 'Usado para o envio de mensagens',
+                      ),
                     ),
                   ),
                 ],
