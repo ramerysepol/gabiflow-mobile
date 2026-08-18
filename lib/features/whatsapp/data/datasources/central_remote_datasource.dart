@@ -168,6 +168,67 @@ class CentralRemoteDataSource {
     _unwrap(response, 'assumir conversa');
   }
 
+  /// Encerra a conversa (mesma rota do web, com motivo).
+  Future<void> encerrarConversa(int conversationId, {String? motivo}) async {
+    final response = await _apiClient.post<dynamic>(
+      '/api/whatsapp/conversations/$conversationId/close',
+      data: {'reason': motivo ?? 'Resolvido'},
+      options: await _authOptions(),
+    );
+    _unwrap(response, 'encerrar conversa');
+  }
+
+  /// Arquiva a conversa.
+  Future<void> arquivarConversa(int conversationId) async {
+    final response = await _apiClient.post<dynamic>(
+      '/api/whatsapp/conversations/$conversationId/archive',
+      data: const <String, dynamic>{},
+      options: await _authOptions(),
+    );
+    _unwrap(response, 'arquivar conversa');
+  }
+
+  /// Transfere para outro atendente.
+  Future<void> transferirConversa(
+    int conversationId, {
+    required int paraUsuario,
+    String? motivo,
+  }) async {
+    final response = await _apiClient.post<dynamic>(
+      '/api/whatsapp/conversations/$conversationId/transfer',
+      data: {
+        'toUserId': paraUsuario,
+        'reason': motivo ?? 'Transferida pelo aplicativo',
+        'notifyUser': true,
+      },
+      options: await _authOptions(),
+    );
+    _unwrap(response, 'transferir conversa');
+  }
+
+  /// Lista atendentes do tenant (para transferencia).
+  Future<List<AtendenteResumo>> listarAtendentes() async {
+    final response = await _apiClient.get<dynamic>(
+      '/api/whatsapp/users',
+      options: await _authOptions(),
+    );
+    final raw = response.data;
+    List<dynamic> lista = const [];
+    if (raw is Map<String, dynamic>) {
+      final inner = raw['data'];
+      if (inner is List<dynamic>) {
+        lista = inner;
+      } else if (inner is Map<String, dynamic> &&
+          inner['users'] is List<dynamic>) {
+        lista = inner['users'] as List<dynamic>;
+      }
+    }
+    return lista
+        .whereType<Map<String, dynamic>>()
+        .map(AtendenteResumo.fromJson)
+        .toList();
+  }
+
   /// Cadastra resposta rapida (mesma rota do web: shortcut normalizado la).
   Future<void> criarRespostaRapida({
     required String atalho,

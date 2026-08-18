@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
 import 'package:path_provider/path_provider.dart';
@@ -37,7 +38,6 @@ class CentralChatPage extends ConsumerStatefulWidget {
 class _CentralChatPageState extends ConsumerState<CentralChatPage> {
   final _inputController = TextEditingController();
   final _scrollController = ScrollController();
-  int _ultimaQtd = 0;
   bool _sheetRespostasAberta = false;
 
   @override
@@ -74,13 +74,6 @@ class _CentralChatPageState extends ConsumerState<CentralChatPage> {
     _inputController.dispose();
     _scrollController.dispose();
     super.dispose();
-  }
-
-  void _rolarParaFim() {
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!_scrollController.hasClients) return;
-      _scrollController.jumpTo(_scrollController.position.maxScrollExtent);
-    });
   }
 
   Future<void> _enviar() async {
@@ -179,6 +172,122 @@ class _CentralChatPageState extends ConsumerState<CentralChatPage> {
         );
   }
 
+  Future<void> _transferirConversa() async {
+    final ds = ref.read(centralDataSourceProvider);
+    List<AtendenteResumo> atendentes;
+    try {
+      atendentes = await ds.listarAtendentes();
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Falha ao carregar atendentes: $e')));
+      }
+      return;
+    }
+    if (!mounted) return;
+    final meuId = ref.read(authProvider).user?.id;
+    final opcoes = atendentes.where((a) => a.id != meuId).toList();
+    if (opcoes.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text('Nenhum outro atendente disponível.')));
+      return;
+    }
+    final escolhido = await showModalBottomSheet<AtendenteResumo>(
+      context: context,
+      showDragHandle: true,
+      builder: (ctx) => SafeArea(
+        child: ListView(
+          shrinkWrap: true,
+          children: [
+            const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+              child: Text('Transferir para',
+                  style: TextStyle(fontWeight: FontWeight.w700)),
+            ),
+            ...opcoes.map((a) => ListTile(
+                  leading: const CircleAvatar(
+                      child: Icon(Icons.person_rounded, size: 20)),
+                  title: Text(a.nome),
+                  onTap: () => Navigator.of(ctx).pop(a),
+                )),
+          ],
+        ),
+      ),
+    );
+    if (escolhido == null || !mounted) return;
+    try {
+      await ds.transferirConversa(widget.conversationId,
+          paraUsuario: escolhido.id);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Transferida para ${escolhido.nome}.')));
+      if (context.canPop()) context.pop();
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text('Falha ao transferir: $e')));
+      }
+    }
+  }
+
+  Future<void> _encerrarConversa() async {
+    final motivoCtrl = TextEditingController(text: 'Resolvido');
+    final confirmar = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Encerrar conversa'),
+        content: SizedBox(
+          width: 320,
+          child: TextField(
+            controller: motivoCtrl,
+            decoration: const InputDecoration(
+                labelText: 'Motivo', border: OutlineInputBorder()),
+          ),
+        ),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.of(ctx).pop(false),
+              child: const Text('Cancelar')),
+          FilledButton(
+              onPressed: () => Navigator.of(ctx).pop(true),
+              child: const Text('Encerrar')),
+        ],
+      ),
+    );
+    if (confirmar != true || !mounted) return;
+    try {
+      await ref
+          .read(centralDataSourceProvider)
+          .encerrarConversa(widget.conversationId, motivo: motivoCtrl.text);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Conversa encerrada.')));
+      if (context.canPop()) context.pop();
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text('Falha ao encerrar: $e')));
+      }
+    }
+  }
+
+  Future<void> _arquivarConversa() async {
+    try {
+      await ref
+          .read(centralDataSourceProvider)
+          .arquivarConversa(widget.conversationId);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Conversa arquivada.')));
+      if (context.canPop()) context.pop();
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text('Falha ao arquivar: $e')));
+      }
+    }
+  }
+
   Future<void> _enviarAudio(String caminho) async {
     await ref.read(chatProvider(widget.conversationId).notifier).enviarMidia(
           filePath: caminho,
@@ -193,11 +302,18 @@ class _CentralChatPageState extends ConsumerState<CentralChatPage> {
   }) async {
     if (!jaMarcado && _sheetRespostasAberta) return;
     _sheetRespostasAberta = true;
+    // Fecha o teclado antes: com ele aberto o sheet nasce escondido atras
+    // do teclado e a tela parece travada (so a barreira do modal visivel).
+    FocusManager.instance.primaryFocus?.unfocus();
     final escolhida = await showModalBottomSheet<RespostaRapida>(
       context: context,
       showDragHandle: true,
       isScrollControlled: true,
-      builder: (_) => const _RespostasRapidasSheet(),
+      useSafeArea: true,
+      builder: (ctx) => Padding(
+        padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(ctx).bottom),
+        child: const _RespostasRapidasSheet(),
+      ),
     );
     _sheetRespostasAberta = false;
     if (!mounted) return;
@@ -215,12 +331,6 @@ class _CentralChatPageState extends ConsumerState<CentralChatPage> {
   Widget build(BuildContext context) {
     final estado = ref.watch(chatProvider(widget.conversationId));
     final isDark = Theme.of(context).brightness == Brightness.dark;
-
-    // Autoscroll quando chegam mensagens novas.
-    if (estado.mensagens.length != _ultimaQtd) {
-      _ultimaQtd = estado.mensagens.length;
-      _rolarParaFim();
-    }
 
     return Scaffold(
       backgroundColor: isDark ? _fundoEscuro : _fundoClaro,
@@ -280,6 +390,48 @@ class _CentralChatPageState extends ConsumerState<CentralChatPage> {
               );
             },
           ),
+          PopupMenuButton<String>(
+            tooltip: 'Mais opções',
+            onSelected: (acao) {
+              switch (acao) {
+                case 'transferir':
+                  _transferirConversa();
+                case 'encerrar':
+                  _encerrarConversa();
+                case 'arquivar':
+                  _arquivarConversa();
+              }
+            },
+            itemBuilder: (_) => const [
+              PopupMenuItem(
+                value: 'transferir',
+                child: ListTile(
+                  dense: true,
+                  contentPadding: EdgeInsets.zero,
+                  leading: Icon(Icons.swap_horiz_rounded),
+                  title: Text('Transferir conversa'),
+                ),
+              ),
+              PopupMenuItem(
+                value: 'encerrar',
+                child: ListTile(
+                  dense: true,
+                  contentPadding: EdgeInsets.zero,
+                  leading: Icon(Icons.check_circle_outline_rounded),
+                  title: Text('Encerrar conversa'),
+                ),
+              ),
+              PopupMenuItem(
+                value: 'arquivar',
+                child: ListTile(
+                  dense: true,
+                  contentPadding: EdgeInsets.zero,
+                  leading: Icon(Icons.archive_outlined),
+                  title: Text('Arquivar'),
+                ),
+              ),
+            ],
+          ),
         ],
       ),
       body: Column(
@@ -305,15 +457,20 @@ class _CentralChatPageState extends ConsumerState<CentralChatPage> {
           Expanded(
             child: estado.carregando && estado.mensagens.isEmpty
                 ? const Center(child: CircularProgressIndicator())
+                // Lista invertida (padrao de chat): ja abre ancorada na
+                // ultima mensagem — sem pulo — e mensagens novas nao
+                // arrastam a tela de quem esta lendo o historico.
                 : ListView.builder(
                     controller: _scrollController,
+                    reverse: true,
                     padding:
                         const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                     itemCount: estado.mensagens.length,
                     itemBuilder: (context, i) {
-                      final m = estado.mensagens[i];
+                      final real = estado.mensagens.length - 1 - i;
+                      final m = estado.mensagens[real];
                       final anterior =
-                          i > 0 ? estado.mensagens[i - 1] : null;
+                          real > 0 ? estado.mensagens[real - 1] : null;
                       return Column(
                         children: [
                           if (_diaDiferente(anterior, m))
@@ -372,7 +529,9 @@ class _RespostasRapidasSheetState
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Nova resposta rápida'),
-        content: Column(
+        content: SizedBox(
+          width: 320,
+          child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             TextField(
@@ -395,6 +554,7 @@ class _RespostasRapidasSheetState
               ),
             ),
           ],
+          ),
         ),
         actions: [
           TextButton(
@@ -458,12 +618,19 @@ class _RespostasRapidasSheetState
                   ),
                 ),
                 const SizedBox(width: 8),
-                FilledButton.icon(
-                  onPressed: _cadastrar,
-                  icon: const Icon(Icons.add_rounded, size: 18),
-                  label: const Text('Nova'),
-                  style: FilledButton.styleFrom(
-                    backgroundColor: const Color(0xFF25D366),
+                // Dimensao fixa: sem ela o botao recebia BoxConstraints de
+                // largura infinita e derrubava o layout do sheet inteiro.
+                SizedBox(
+                  width: 104,
+                  height: 44,
+                  child: FilledButton.icon(
+                    onPressed: _cadastrar,
+                    icon: const Icon(Icons.add_rounded, size: 18),
+                    label: const Text('Nova'),
+                    style: FilledButton.styleFrom(
+                      backgroundColor: const Color(0xFF25D366),
+                      padding: const EdgeInsets.symmetric(horizontal: 10),
+                    ),
                   ),
                 ),
               ],

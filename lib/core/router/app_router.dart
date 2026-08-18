@@ -93,12 +93,25 @@ final GoRouter appRouter = GoRouter(
             final id = int.tryParse(state.pathParameters['id'] ?? '') ?? 0;
             return CustomTransitionPage<void>(
               key: state.pageKey,
+              // Nao-opaco: a lista continua visivel por tras durante o fade
+              // (opaco = fade sobre fundo preto do Navigator).
+              opaque: false,
               transitionDuration: const Duration(milliseconds: 180),
               reverseTransitionDuration: const Duration(milliseconds: 150),
-              transitionsBuilder: (_, animation, __, child) => FadeTransition(
-                opacity: CurveTween(curve: Curves.easeOut).animate(animation),
-                child: child,
-              ),
+              transitionsBuilder: (_, animation, __, child) {
+                final curva = CurvedAnimation(
+                    parent: animation, curve: Curves.easeOutCubic);
+                return FadeTransition(
+                  opacity: curva,
+                  child: SlideTransition(
+                    position: Tween<Offset>(
+                      begin: const Offset(0.12, 0),
+                      end: Offset.zero,
+                    ).animate(curva),
+                    child: child,
+                  ),
+                );
+              },
               child: CentralChatPage(
                 conversationId: id,
                 nomeContato: state.uri.queryParameters['nome'],

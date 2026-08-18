@@ -193,6 +193,21 @@ class ConversasResult {
   });
 }
 
+/// Atendente disponivel para transferencia.
+class AtendenteResumo {
+  final int id;
+  final String nome;
+
+  const AtendenteResumo({required this.id, required this.nome});
+
+  factory AtendenteResumo.fromJson(Map<String, dynamic> json) =>
+      AtendenteResumo(
+        id: _int(json['id']),
+        nome: (json['name'] ?? json['nome'] ?? json['email'] ?? 'Atendente')
+            .toString(),
+      );
+}
+
 /// Resposta rapida cadastrada no tenant.
 class RespostaRapida {
   final int id;

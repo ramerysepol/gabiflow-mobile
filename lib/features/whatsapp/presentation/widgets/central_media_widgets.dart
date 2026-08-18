@@ -19,7 +19,25 @@ class _AudioCentral {
   static final AudioPlayer player = AudioPlayer();
   static final ValueNotifier<String?> urlAtual = ValueNotifier<String?>(null);
 
+  /// URLs ja ouvidas ate o fim nesta sessao — ficam 100% azuis (WhatsApp).
+  static final Set<String> ouvidos = <String>{};
+  static final ValueNotifier<int> ouvidosVersao = ValueNotifier<int>(0);
+  static bool _listenerPronto = false;
+
+  static void _garantirListener() {
+    if (_listenerPronto) return;
+    _listenerPronto = true;
+    player.processingStateStream.listen((s) {
+      final url = urlAtual.value;
+      if (s == ProcessingState.completed && url != null &&
+          ouvidos.add(url)) {
+        ouvidosVersao.value++;
+      }
+    });
+  }
+
   static Future<void> tocar(String url) async {
+    _garantirListener();
     if (urlAtual.value != url) {
       await player.stop();
       urlAtual.value = url;
@@ -343,10 +361,12 @@ class _AudioBolha extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ValueListenableBuilder<String?>(
-      valueListenable: _AudioCentral.urlAtual,
-      builder: (context, urlAtiva, _) {
-        final souAtiva = urlAtiva == url;
+    return ListenableBuilder(
+      listenable: Listenable.merge(
+          [_AudioCentral.urlAtual, _AudioCentral.ouvidosVersao]),
+      builder: (context, _) {
+        final souAtiva = _AudioCentral.urlAtual.value == url;
+        final jaOuvido = _AudioCentral.ouvidos.contains(url);
         return SizedBox(
           width: 230,
           child: Row(
@@ -407,10 +427,11 @@ class _AudioBolha extends StatelessWidget {
                     final total = souAtiva
                         ? (_AudioCentral.player.duration ?? Duration.zero)
                         : Duration.zero;
-                    final progresso = total.inMilliseconds > 0
+                    // Ja ouvido ate o fim: permanece 100% azul (WhatsApp).
+                    final progresso = souAtiva && total.inMilliseconds > 0
                         ? (posicao.inMilliseconds / total.inMilliseconds)
                             .clamp(0.0, 1.0)
-                        : 0.0;
+                        : (jaOuvido ? 1.0 : 0.0);
                     return Column(
                       mainAxisSize: MainAxisSize.min,
                       crossAxisAlignment: CrossAxisAlignment.start,
