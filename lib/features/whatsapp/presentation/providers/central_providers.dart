@@ -168,7 +168,14 @@ class ChatNotifier extends StateNotifier<ChatState> {
       );
     } catch (e) {
       if (!mounted) return;
-      state = state.copyWith(carregando: false, erro: e.toString());
+      // Falha transitoria de rede no polling nao vira alarme visual: o
+      // proximo tick (5s) resolve sozinho. So mostra erro quando ainda nao
+      // ha nada na tela (falha real de carregamento inicial).
+      if (state.mensagens.isEmpty) {
+        state = state.copyWith(carregando: false, erro: e.toString());
+      } else {
+        state = state.copyWith(carregando: false);
+      }
     }
   }
 
@@ -210,6 +217,57 @@ class ChatNotifier extends StateNotifier<ChatState> {
         mensagens: atualizadas,
         enviando: false,
         erro: 'Falha ao enviar: $e',
+      );
+    }
+  }
+
+  /// Envia midia com bolha otimista mostrando o arquivo local.
+  Future<void> enviarMidia({
+    required String filePath,
+    required String tipo,
+    String? caption,
+    String? filename,
+  }) async {
+    _enviosLocais++;
+    final otimista = Mensagem(
+      id: -_enviosLocais,
+      conversationId: conversationId,
+      direction: 'outbound',
+      contentType: tipo,
+      caption: caption,
+      mediaFilename: filename,
+      status: 'pending',
+      createdAt: DateTime.now(),
+      localFilePath: filePath,
+    );
+    state = state.copyWith(
+      mensagens: [...state.mensagens, otimista],
+      enviando: true,
+      limparErro: true,
+    );
+    try {
+      final enviada = await _ds.enviarMidia(
+        conversationId,
+        filePath: filePath,
+        tipo: tipo,
+        caption: caption,
+        filename: filename,
+      );
+      if (!mounted) return;
+      final atualizadas = state.mensagens
+          .map((m) => m.id == otimista.id ? enviada : m)
+          .toList(growable: false);
+      state = state.copyWith(mensagens: atualizadas, enviando: false);
+    } catch (e) {
+      if (!mounted) return;
+      final atualizadas = state.mensagens
+          .map((m) =>
+              m.id == otimista.id ? otimista.copyWith(status: 'failed') : m)
+          .toList(growable: false);
+      state = state.copyWith(
+        mensagens: atualizadas,
+        enviando: false,
+        erro: 'Falha ao enviar mídia: $e',
       );
     }
   }

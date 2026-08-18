@@ -66,10 +66,14 @@ class CentralRemoteDataSource {
       options: await _authOptions(),
     );
     final data = _unwrap(response, 'listar conversas');
-    final lista = (data['conversations'] as List<dynamic>? ?? const [])
-        .whereType<Map<String, dynamic>>()
-        .map(ConversaResumo.fromJson)
-        .toList();
+    final lista = <ConversaResumo>[];
+    for (final item in (data['conversations'] as List<dynamic>? ?? const [])) {
+      if (item is! Map<String, dynamic>) continue;
+      // Foto de perfil pode vir relativa (proxy local de midia da Meta)
+      final abs = await _absoluta(item['profilePictureUrl'] as String?);
+      if (abs != null) item['profilePictureUrl'] = abs;
+      lista.add(ConversaResumo.fromJson(item));
+    }
     return ConversasResult(
       conversas: lista,
       total: (data['total'] as num?)?.toInt() ?? lista.length,
@@ -99,27 +103,9 @@ class CentralRemoteDataSource {
     final mensagens = <Mensagem>[];
     for (final item in (data['messages'] as List<dynamic>? ?? const [])) {
       if (item is! Map<String, dynamic>) continue;
-      var m = Mensagem.fromJson(item);
-      final abs = await _absoluta(m.mediaUrl);
-      if (abs != m.mediaUrl) {
-        m = Mensagem(
-          id: m.id,
-          conversationId: m.conversationId,
-          direction: m.direction,
-          contentType: m.contentType,
-          textContent: m.textContent,
-          caption: m.caption,
-          mediaUrl: abs,
-          mediaMimeType: m.mediaMimeType,
-          mediaFilename: m.mediaFilename,
-          status: m.status,
-          errorMessage: m.errorMessage,
-          sentByUserName: m.sentByUserName,
-          quotedMessagePreview: m.quotedMessagePreview,
-          createdAt: m.createdAt,
-        );
-      }
-      mensagens.add(m);
+      final abs = await _absoluta(item['mediaUrl'] as String?);
+      if (abs != null) item['mediaUrl'] = abs;
+      mensagens.add(Mensagem.fromJson(item));
     }
     // Ordena por data crescente para renderizar do topo para baixo.
     mensagens.sort((a, b) {
@@ -142,6 +128,36 @@ class CentralRemoteDataSource {
     throw Exception('Resposta sem mensagem ao enviar');
   }
 
+  /// Envia midia (imagem/video/documento/audio) via multipart. O servidor
+  /// valida tamanho/extensao e transcodifica audio para OGG/Opus (voz).
+  Future<Mensagem> enviarMidia(
+    int conversationId, {
+    required String filePath,
+    required String tipo, // image | video | audio | document
+    String? caption,
+    String? filename,
+  }) async {
+    final form = FormData.fromMap({
+      'file': await MultipartFile.fromFile(filePath, filename: filename),
+      'type': tipo,
+      if (caption != null && caption.trim().isNotEmpty) 'caption': caption.trim(),
+    });
+    final base = await _authOptions();
+    final response = await _apiClient.post<dynamic>(
+      '/api/whatsapp/conversations/$conversationId/messages/media',
+      data: form,
+      options: base.copyWith(contentType: 'multipart/form-data'),
+    );
+    final data = _unwrap(response, 'enviar midia');
+    final msg = data['message'];
+    if (msg is Map<String, dynamic>) {
+      final abs = await _absoluta(msg['mediaUrl'] as String?);
+      if (abs != null) msg['mediaUrl'] = abs;
+      return Mensagem.fromJson(msg);
+    }
+    throw Exception('Resposta sem mensagem ao enviar midia');
+  }
+
   /// Assume a conversa para o usuario logado (atendimento ativo).
   Future<void> assumirConversa(int conversationId, int userId) async {
     final response = await _apiClient.patch<dynamic>(
@@ -150,6 +166,23 @@ class CentralRemoteDataSource {
       options: await _authOptions(),
     );
     _unwrap(response, 'assumir conversa');
+  }
+
+  /// Cadastra resposta rapida (mesma rota do web: shortcut normalizado la).
+  Future<void> criarRespostaRapida({
+    required String atalho,
+    required String conteudo,
+  }) async {
+    final response = await _apiClient.post<dynamic>(
+      '/api/whatsapp/quick-replies',
+      data: {'shortcut': atalho, 'content': conteudo},
+      options: await _authOptions(),
+    );
+    final data = response.data;
+    if (data is! Map<String, dynamic> || data['success'] != true) {
+      final erro = data is Map<String, dynamic> ? data['error'] : null;
+      throw Exception(erro?.toString() ?? 'Falha ao cadastrar resposta rapida');
+    }
   }
 
   Future<List<RespostaRapida>> respostasRapidas() async {

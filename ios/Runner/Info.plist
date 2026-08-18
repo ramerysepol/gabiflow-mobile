@@ -49,6 +49,8 @@
 	<string>Usar Face ID para fazer login no GabiFlow</string>
 	<!-- Anexos de demanda: sem estas descricoes o iOS ENCERRA o app ao abrir a
 	     camera, e a Apple recusa o envio na revisao. -->
+	<key>NSMicrophoneUsageDescription</key>
+	<string>O microfone e usado para gravar mensagens de voz no atendimento.</string>
 	<key>NSCameraUsageDescription</key>
 	<string>Tirar fotos para anexar às demandas que você atende</string>
 	<key>NSPhotoLibraryUsageDescription</key>

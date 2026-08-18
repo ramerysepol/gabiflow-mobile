@@ -6,27 +6,28 @@ part of 'dashboard_stats_model.dart';
 // JsonSerializableGenerator
 // **************************************************************************
 
-_$DashboardStatsModelImpl _$$DashboardStatsModelImplFromJson(
-  Map<String, dynamic> json,
-) => _$DashboardStatsModelImpl(
-  totalConstituents: (json['totalConstituents'] as num).toInt(),
-  newConstituentsToday: (json['newConstituentsToday'] as num).toInt(),
-  totalDemands: (json['totalDemands'] as num).toInt(),
-  openDemands: (json['openDemands'] as num).toInt(),
-  resolvedDemandsToday: (json['resolvedDemandsToday'] as num).toInt(),
-  upcomingEvents: (json['upcomingEvents'] as num).toInt(),
-  eventsThisWeek: (json['eventsThisWeek'] as num).toInt(),
-  messagestoday: (json['messagestoday'] as num).toInt(),
-  messagesSent: (json['messagesSent'] as num).toInt(),
-  recentActivities:
-      (json['recentActivities'] as List<dynamic>?)
-          ?.map((e) => RecentActivityModel.fromJson(e as Map<String, dynamic>))
-          .toList() ??
-      const [],
-);
+_DashboardStatsModel _$DashboardStatsModelFromJson(Map<String, dynamic> json) =>
+    _DashboardStatsModel(
+      totalConstituents: (json['totalConstituents'] as num).toInt(),
+      newConstituentsToday: (json['newConstituentsToday'] as num).toInt(),
+      totalDemands: (json['totalDemands'] as num).toInt(),
+      openDemands: (json['openDemands'] as num).toInt(),
+      resolvedDemandsToday: (json['resolvedDemandsToday'] as num).toInt(),
+      upcomingEvents: (json['upcomingEvents'] as num).toInt(),
+      eventsThisWeek: (json['eventsThisWeek'] as num).toInt(),
+      messagestoday: (json['messagestoday'] as num).toInt(),
+      messagesSent: (json['messagesSent'] as num).toInt(),
+      recentActivities:
+          (json['recentActivities'] as List<dynamic>?)
+              ?.map(
+                (e) => RecentActivityModel.fromJson(e as Map<String, dynamic>),
+              )
+              .toList() ??
+          const [],
+    );
 
-Map<String, dynamic> _$$DashboardStatsModelImplToJson(
-  _$DashboardStatsModelImpl instance,
+Map<String, dynamic> _$DashboardStatsModelToJson(
+  _DashboardStatsModel instance,
 ) => <String, dynamic>{
   'totalConstituents': instance.totalConstituents,
   'newConstituentsToday': instance.newConstituentsToday,

@@ -6,7 +6,7 @@ part 'tenant_model.freezed.dart';
 part 'tenant_model.g.dart';
 
 @freezed
-class TenantModel with _$TenantModel {
+abstract class TenantModel with _$TenantModel {
   const factory TenantModel({
     required int id,
     required String nome,

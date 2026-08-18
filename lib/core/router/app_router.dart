@@ -92,6 +92,7 @@ final GoRouter appRouter = GoRouter(
               conversationId: id,
               nomeContato: state.uri.queryParameters['nome'],
               telefone: state.uri.queryParameters['tel'],
+              fotoUrl: state.uri.queryParameters['foto'],
             );
           },
         ),

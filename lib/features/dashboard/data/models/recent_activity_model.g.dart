@@ -6,18 +6,17 @@ part of 'recent_activity_model.dart';
 // JsonSerializableGenerator
 // **************************************************************************
 
-_$RecentActivityModelImpl _$$RecentActivityModelImplFromJson(
-  Map<String, dynamic> json,
-) => _$RecentActivityModelImpl(
-  type: json['type'] as String,
-  title: json['title'] as String,
-  action: json['action'] as String,
-  createdAt: DateTime.parse(json['createdAt'] as String),
-  referenceId: json['referenceId'] as String?,
-);
+_RecentActivityModel _$RecentActivityModelFromJson(Map<String, dynamic> json) =>
+    _RecentActivityModel(
+      type: json['type'] as String,
+      title: json['title'] as String,
+      action: json['action'] as String,
+      createdAt: DateTime.parse(json['createdAt'] as String),
+      referenceId: json['referenceId'] as String?,
+    );
 
-Map<String, dynamic> _$$RecentActivityModelImplToJson(
-  _$RecentActivityModelImpl instance,
+Map<String, dynamic> _$RecentActivityModelToJson(
+  _RecentActivityModel instance,
 ) => <String, dynamic>{
   'type': instance.type,
   'title': instance.title,

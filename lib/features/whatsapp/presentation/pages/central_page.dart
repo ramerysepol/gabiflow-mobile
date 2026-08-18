@@ -37,6 +37,16 @@ class _CentralPageState extends ConsumerState<CentralPage> {
     final notifier = ref.read(conversasProvider.notifier);
     final cs = Theme.of(context).colorScheme;
 
+    // Material proprio: o shell pinta um fundo colorido e, sem isto,
+    // ListTile/TextField reclamam de "No Material widget found".
+    return Material(
+      type: MaterialType.transparency,
+      child: _conteudoPagina(estado, notifier, cs),
+    );
+  }
+
+  Widget _conteudoPagina(
+      ConversasState estado, ConversasNotifier notifier, ColorScheme cs) {
     return Column(
       children: [
         // Busca
@@ -170,6 +180,8 @@ class _ConversaTile extends StatelessWidget {
         queryParameters: {
           'nome': conversa.displayName,
           'tel': conversa.whatsappPhone,
+          if (conversa.profilePictureUrl != null)
+            'foto': conversa.profilePictureUrl!,
         },
       ).toString()),
       leading: _Avatar(conversa: conversa),
@@ -246,11 +258,13 @@ class _Avatar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
+    // characters.first evita cortar emoji/unicode decorado no meio
+    // (nomes como "𝕴𝖗𝖊𝖒𝖆𝖗" quebravam com "string is not well-formed UTF-16").
     final iniciais = conversa.displayName
         .split(' ')
-        .where((p) => p.isNotEmpty)
+        .where((p) => p.trim().isNotEmpty)
         .take(2)
-        .map((p) => p[0].toUpperCase())
+        .map((p) => p.characters.first.toUpperCase())
         .join();
 
     final fallback = CircleAvatar(

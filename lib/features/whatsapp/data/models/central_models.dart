@@ -88,7 +88,9 @@ class Mensagem {
   final String? errorMessage;
   final String? sentByUserName;
   final String? quotedMessagePreview;
+  final String? reactionEmoji;
   final DateTime createdAt;
+  final String? localFilePath; // preview otimista de midia recem-enviada
 
   const Mensagem({
     required this.id,
@@ -104,7 +106,9 @@ class Mensagem {
     this.errorMessage,
     this.sentByUserName,
     this.quotedMessagePreview,
+    this.reactionEmoji,
     required this.createdAt,
+    this.localFilePath,
   });
 
   bool get minha => direction == 'outbound';
@@ -129,6 +133,8 @@ class Mensagem {
         return 'Figurinha';
       case 'location':
         return '📍 Localização';
+      case 'reaction':
+        return '${reactionEmoji ?? '👍'} Reagiu a uma mensagem';
       default:
         return contentType;
     }
@@ -148,6 +154,7 @@ class Mensagem {
         errorMessage: json['errorMessage'] as String?,
         sentByUserName: json['sentByUserName'] as String?,
         quotedMessagePreview: json['quotedMessagePreview'] as String?,
+        reactionEmoji: json['reactionEmoji'] as String?,
         createdAt: _dt(json['createdAt']) ?? DateTime.now(),
       );
 
@@ -165,7 +172,9 @@ class Mensagem {
         errorMessage: errorMessage,
         sentByUserName: sentByUserName,
         quotedMessagePreview: quotedMessagePreview,
+        reactionEmoji: reactionEmoji,
         createdAt: createdAt,
+        localFilePath: localFilePath,
       );
 }
 

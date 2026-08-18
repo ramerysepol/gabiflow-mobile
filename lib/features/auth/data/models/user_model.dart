@@ -28,8 +28,15 @@ List<String> _parsePermissions(dynamic value) {
   return const <String>[];
 }
 
+/// A API pode devolver `preferences` como objeto, lista vazia (Postgres) ou
+/// null — só interessa quando for objeto.
+Map<String, dynamic>? _parsePreferences(dynamic value) {
+  if (value is Map) return Map<String, dynamic>.from(value);
+  return null;
+}
+
 @freezed
-class UserModel with _$UserModel {
+abstract class UserModel with _$UserModel {
   const factory UserModel({
     @JsonKey(fromJson: _parseId) required int id,
     required String name,
@@ -48,7 +55,7 @@ class UserModel with _$UserModel {
     @JsonKey(fromJson: _parsePermissions)
     @Default(<String>[])
     List<String> permissions,
-    Map<String, dynamic>? preferences,
+    @JsonKey(fromJson: _parsePreferences) Map<String, dynamic>? preferences,
   }) = _UserModel;
 
   factory UserModel.fromJson(Map<String, dynamic> json) =>

@@ -4,7 +4,7 @@ part 'recent_activity_model.freezed.dart';
 part 'recent_activity_model.g.dart';
 
 @freezed
-class RecentActivityModel with _$RecentActivityModel {
+abstract class RecentActivityModel with _$RecentActivityModel {
   const factory RecentActivityModel({
     required String type,
     required String title,

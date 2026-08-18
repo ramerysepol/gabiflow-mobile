@@ -46,7 +46,7 @@ class HomePage extends ConsumerWidget {
     final navItems = <(IconData, IconData, String)>[
       (Icons.home_outlined, Icons.home_rounded, 'Início'),
       if (temCentral)
-        (Icons.chat_bubble_outline_rounded, Icons.chat_rounded, 'Atendimento'),
+        (Icons.chat_bubble_outline_rounded, Icons.chat_rounded, 'Chats'),
       (Icons.people_outline_rounded, Icons.people_rounded, 'Munícipes'),
       (Icons.inbox_outlined, Icons.inbox_rounded, 'Demandas'),
       (Icons.calendar_month_outlined, Icons.calendar_month_rounded, 'Agenda'),

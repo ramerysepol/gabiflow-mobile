@@ -6,31 +6,30 @@ part of 'user_model.dart';
 // JsonSerializableGenerator
 // **************************************************************************
 
-_$UserModelImpl _$$UserModelImplFromJson(Map<String, dynamic> json) =>
-    _$UserModelImpl(
-      id: _parseId(json['id']),
-      name: json['name'] as String,
-      email: json['email'] as String,
-      role: json['role'] as String,
-      avatar: json['avatar'] as String?,
-      tenant: json['tenant'] as String?,
-      telefone: json['telefone'] as String?,
-      cpf: json['cpf'] as String?,
-      tenantId: json['tenant_id'] as String?,
-      isActive: json['is_active'] as bool?,
-      createdAt: json['created_at'] == null
-          ? null
-          : DateTime.parse(json['created_at'] as String),
-      updatedAt: json['updated_at'] == null
-          ? null
-          : DateTime.parse(json['updated_at'] as String),
-      permissions: json['permissions'] == null
-          ? const <String>[]
-          : _parsePermissions(json['permissions']),
-      preferences: json['preferences'] as Map<String, dynamic>?,
-    );
+_UserModel _$UserModelFromJson(Map<String, dynamic> json) => _UserModel(
+  id: _parseId(json['id']),
+  name: json['name'] as String,
+  email: json['email'] as String,
+  role: json['role'] as String,
+  avatar: json['avatar'] as String?,
+  tenant: json['tenant'] as String?,
+  telefone: json['telefone'] as String?,
+  cpf: json['cpf'] as String?,
+  tenantId: json['tenant_id'] as String?,
+  isActive: json['is_active'] as bool?,
+  createdAt: json['created_at'] == null
+      ? null
+      : DateTime.parse(json['created_at'] as String),
+  updatedAt: json['updated_at'] == null
+      ? null
+      : DateTime.parse(json['updated_at'] as String),
+  permissions: json['permissions'] == null
+      ? const <String>[]
+      : _parsePermissions(json['permissions']),
+  preferences: _parsePreferences(json['preferences']),
+);
 
-Map<String, dynamic> _$$UserModelImplToJson(_$UserModelImpl instance) =>
+Map<String, dynamic> _$UserModelToJson(_UserModel instance) =>
     <String, dynamic>{
       'id': instance.id,
       'name': instance.name,
