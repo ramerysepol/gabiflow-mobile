@@ -14,6 +14,8 @@ import '../../features/home/presentation/pages/dashboard_page.dart';
 import '../../features/home/presentation/pages/home_page.dart';
 import '../../features/splash/presentation/pages/splash_page.dart';
 import '../../features/tenant/presentation/pages/tenant_setup_page.dart';
+import '../../features/whatsapp/presentation/pages/central_chat_page.dart';
+import '../../features/whatsapp/presentation/pages/central_page.dart';
 import '../../features/whatsapp/presentation/pages/envio_massa_progress_page.dart';
 import '../../features/command_center/presentation/pages/command_center_page.dart';
 import '../../features/command_center/presentation/pages/ia_chat_page.dart';
@@ -75,6 +77,23 @@ final GoRouter appRouter = GoRouter(
         GoRoute(
           path: '/home',
           builder: (_, __) => const DashboardPage(),
+        ),
+
+        // ── Atendimento (Central WhatsApp) ─────────────────────────────────
+        GoRoute(
+          path: '/home/atendimento',
+          builder: (_, __) => const CentralPage(),
+        ),
+        GoRoute(
+          path: '/home/atendimento/chat/:id',
+          builder: (_, state) {
+            final id = int.tryParse(state.pathParameters['id'] ?? '') ?? 0;
+            return CentralChatPage(
+              conversationId: id,
+              nomeContato: state.uri.queryParameters['nome'],
+              telefone: state.uri.queryParameters['tel'],
+            );
+          },
         ),
 
         // ── Munícipes ──────────────────────────────────────────────────────

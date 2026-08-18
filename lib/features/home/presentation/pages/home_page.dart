@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../../core/auth/permissoes.dart';
 import '../../../../core/theme/design_tokens.dart';
 import '../../../../core/widgets/app_bottom_nav.dart';
 import '../../../../core/widgets/user_avatar.dart';
@@ -20,32 +21,46 @@ class HomePage extends ConsumerWidget {
 
   final Widget child;
 
-  static const _routes = [
-    '/home',
-    '/home/constituents',
-    '/home/demands',
-    '/home/agenda',
-    '/home/eleitoral',
-  ];
-
-  static const _titles = [
-    '',
-    'Munícipes',
-    'Demandas',
-    'Agenda',
-    'Dados Eleitorais',
-  ];
-
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    // Aba "Atendimento" só existe para quem tem a permissão da central.
+    final temCentral =
+        ref.watch(temPermissaoProvider(Permissoes.whatsappCentral));
+
+    final routes = [
+      '/home',
+      if (temCentral) '/home/atendimento',
+      '/home/constituents',
+      '/home/demands',
+      '/home/agenda',
+      '/home/eleitoral',
+    ];
+    final titles = [
+      '',
+      if (temCentral) 'Atendimento',
+      'Munícipes',
+      'Demandas',
+      'Agenda',
+      'Dados Eleitorais',
+    ];
+    final navItems = <(IconData, IconData, String)>[
+      (Icons.home_outlined, Icons.home_rounded, 'Início'),
+      if (temCentral)
+        (Icons.chat_bubble_outline_rounded, Icons.chat_rounded, 'Atendimento'),
+      (Icons.people_outline_rounded, Icons.people_rounded, 'Munícipes'),
+      (Icons.inbox_outlined, Icons.inbox_rounded, 'Demandas'),
+      (Icons.calendar_month_outlined, Icons.calendar_month_rounded, 'Agenda'),
+      (Icons.bar_chart_outlined, Icons.bar_chart_rounded, 'Eleitoral'),
+    ];
+
     final location = GoRouterState.of(context).uri.path;
-    final rootIndex = _routes.indexOf(location);
+    final rootIndex = routes.indexOf(location);
 
     // Sub-página (detalhe/formulário): tela cheia, sem header nem dock.
     if (rootIndex < 0) return child;
 
     final isHome = rootIndex == 0;
-    final isEleitoral = rootIndex == 4;
+    final isEleitoral = location == '/home/eleitoral';
     final user = ref.watch(authProvider).user;
     final cs = Theme.of(context).colorScheme;
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -68,7 +83,7 @@ class HomePage extends ConsumerWidget {
                   _InkHeader(
                     ink: ink,
                     isHome: isHome,
-                    title: _titles[rootIndex],
+                    title: titles[rootIndex],
                     userName: user?.name,
                     avatarData: user?.avatar,
                     onLogout: () => _confirmLogout(context, ref),
@@ -88,8 +103,9 @@ class HomePage extends ConsumerWidget {
                 ],
               ),
         bottomNavigationBar: AppBottomNav(
+          items: navItems,
           selectedIndex: rootIndex,
-          onTabSelected: (index) => context.go(_routes[index]),
+          onTabSelected: (index) => context.go(routes[index]),
         ),
       ),
     );

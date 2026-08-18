@@ -1,3 +1,6 @@
+// Flutter 3.47 moveu CupertinoPageTransitionsBuilder do material para o
+// cupertino — o import explicito mantem a transicao iOS-slide funcionando.
+import 'package:flutter/cupertino.dart' show CupertinoPageTransitionsBuilder;
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 

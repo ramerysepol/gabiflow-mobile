@@ -4,13 +4,14 @@ import 'package:google_fonts/google_fonts.dart';
 
 import '../theme/design_tokens.dart';
 
-/// Dock de navegação com pill animada, 5 tabs e badge de demandas.
+/// Dock de navegação com pill animada, tabs dinâmicas e badge de demandas.
 class AppBottomNav extends StatelessWidget {
   const AppBottomNav({
     super.key,
     required this.selectedIndex,
     required this.onTabSelected,
     this.demandsBadge = false,
+    this.items = defaultItems,
   });
 
   final int selectedIndex;
@@ -19,7 +20,11 @@ class AppBottomNav extends StatelessWidget {
   /// Mostra ponto no tab Demandas quando true.
   final bool demandsBadge;
 
-  static const _items = [
+  /// Tabs exibidas. O HomeShell monta a lista conforme as permissões do
+  /// usuário (ex.: "Atendimento" só aparece com whatsapp:central).
+  final List<(IconData, IconData, String)> items;
+
+  static const defaultItems = [
     (Icons.home_outlined, Icons.home_rounded, 'Início'),
     (Icons.people_outline_rounded, Icons.people_rounded, 'Munícipes'),
     (Icons.inbox_outlined, Icons.inbox_rounded, 'Demandas'),
@@ -43,15 +48,15 @@ class AppBottomNav extends StatelessWidget {
         child: SizedBox(
           height: 64,
           child: Row(
-            children: List.generate(_items.length, (i) {
-              final (outline, filled, label) = _items[i];
+            children: List.generate(items.length, (i) {
+              final (outline, filled, label) = items[i];
               return Expanded(
                 child: _DockItem(
                   icon: outline,
                   selectedIcon: filled,
                   label: label,
                   selected: i == selectedIndex,
-                  showBadge: i == 2 && demandsBadge,
+                  showBadge: label == 'Demandas' && demandsBadge,
                   onTap: () {
                     HapticFeedback.selectionClick();
                     onTabSelected(i);
