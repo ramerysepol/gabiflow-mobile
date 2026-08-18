@@ -499,8 +499,9 @@ class _Ondinhas extends StatelessWidget {
                   child: Container(
                     height: alturas[i],
                     decoration: BoxDecoration(
+                      // Parte ja ouvida fica azul, como no WhatsApp.
                       color: (i + 1) / _qtd <= progresso
-                          ? const Color(0xFF25D366)
+                          ? const Color(0xFF53BDEB)
                           : corBase,
                       borderRadius: BorderRadius.circular(2),
                     ),

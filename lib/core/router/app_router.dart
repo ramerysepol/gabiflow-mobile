@@ -1,3 +1,4 @@
+import 'package:flutter/widgets.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../features/agenda/presentation/pages/agenda_page.dart';
@@ -86,13 +87,24 @@ final GoRouter appRouter = GoRouter(
         ),
         GoRoute(
           path: '/home/atendimento/chat/:id',
-          builder: (_, state) {
+          // Fade rapido (estilo WhatsApp) em vez do slide iOS padrao:
+          // abrir conversa precisa parecer instantaneo.
+          pageBuilder: (_, state) {
             final id = int.tryParse(state.pathParameters['id'] ?? '') ?? 0;
-            return CentralChatPage(
-              conversationId: id,
-              nomeContato: state.uri.queryParameters['nome'],
-              telefone: state.uri.queryParameters['tel'],
-              fotoUrl: state.uri.queryParameters['foto'],
+            return CustomTransitionPage<void>(
+              key: state.pageKey,
+              transitionDuration: const Duration(milliseconds: 180),
+              reverseTransitionDuration: const Duration(milliseconds: 150),
+              transitionsBuilder: (_, animation, __, child) => FadeTransition(
+                opacity: CurveTween(curve: Curves.easeOut).animate(animation),
+                child: child,
+              ),
+              child: CentralChatPage(
+                conversationId: id,
+                nomeContato: state.uri.queryParameters['nome'],
+                telefone: state.uri.queryParameters['tel'],
+                fotoUrl: state.uri.queryParameters['foto'],
+              ),
             );
           },
         ),
