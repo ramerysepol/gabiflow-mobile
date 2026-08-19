@@ -124,6 +124,8 @@ class Mensagem {
       case 'image':
         return '📷 Foto';
       case 'audio':
+      case 'ptt':
+      case 'voice':
         return '🎤 Áudio';
       case 'video':
         return '🎬 Vídeo';

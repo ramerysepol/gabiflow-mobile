@@ -113,6 +113,8 @@ class MidiaConteudo extends StatelessWidget {
             : _VideoBolha(url: mensagem.mediaUrl!, caption: mensagem.caption,
                 corTexto: corTexto);
       case 'audio':
+      case 'ptt': // nota de voz vinda da Z-API
+      case 'voice':
         return mensagem.mediaUrl == null
             ? _ArquivoTile(
                 mensagem: mensagem,
