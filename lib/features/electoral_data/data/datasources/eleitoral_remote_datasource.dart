@@ -29,6 +29,7 @@ class EleitoralRemoteDatasource {
     required String estado,
     required String cargo,
     String search = '',
+    String municipio = '',
     int page = 1,
     int limit = 20,
   }) async {
@@ -39,6 +40,7 @@ class EleitoralRemoteDatasource {
         'estado': estado,
         'cargo': cargo,
         if (search.isNotEmpty) 'search': search,
+        if (municipio.isNotEmpty) 'municipio': municipio,
         'page': page,
         'limit': limit,
       },

@@ -35,9 +35,24 @@ class _RankingsPageState extends ConsumerState<RankingsPage>
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final corHeader =
+        isDark ? const Color(0xFF10151F) : const Color(0xFF16213E);
+
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Rankings'),
+        backgroundColor: corHeader,
+        foregroundColor: Colors.white,
+        automaticallyImplyLeading: false,
+        title: const Row(
+          children: [
+            Icon(Icons.leaderboard_rounded,
+                color: Color(0xFF81C784), size: 22),
+            SizedBox(width: 8),
+            Text('Rankings',
+                style: TextStyle(fontWeight: FontWeight.w800, fontSize: 17)),
+          ],
+        ),
         actions: const [
           Padding(
             padding: EdgeInsets.only(right: 12),
@@ -46,6 +61,9 @@ class _RankingsPageState extends ConsumerState<RankingsPage>
         ],
         bottom: TabBar(
           controller: _tabController,
+          indicatorColor: Colors.white,
+          labelColor: Colors.white,
+          unselectedLabelColor: Colors.white60,
           tabs: _labels.map((l) => Tab(text: l)).toList(),
         ),
       ),

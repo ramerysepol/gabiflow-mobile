@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
+import '../../../../core/auth/permissoes.dart';
 import '../../../../core/theme/design_tokens.dart';
+import '../../../../core/widgets/gradient_action_card.dart';
 import '../../../../core/widgets/kpi_card.dart';
 import '../../../../core/widgets/shimmer_skeleton.dart';
 import '../../../dashboard/data/models/recent_activity_model.dart';
@@ -59,6 +62,21 @@ class DashboardPage extends ConsumerWidget {
 
                 const SizedBox(height: AppSpacing.xl),
 
+                // Acesso rápido — a energia da Central Eleitoral no Início
+                Text(
+                  'ACESSO RÁPIDO',
+                  style: AppTextStyles.eyebrow(context),
+                ).animate().fadeIn(delay: 220.ms),
+
+                const SizedBox(height: AppSpacing.sm + 2),
+
+                const _AcessoRapidoGrid()
+                    .animate()
+                    .fadeIn(delay: 260.ms)
+                    .slideY(begin: 0.06, end: 0),
+
+                const SizedBox(height: AppSpacing.xl),
+
                 // Seção atividade recente
                 Text(
                   'ATIVIDADE RECENTE',
@@ -79,6 +97,80 @@ class DashboardPage extends ConsumerWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+// ---- Acesso rápido ----
+
+class _AcessoRapidoGrid extends ConsumerWidget {
+  const _AcessoRapidoGrid();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final temCentral =
+        ref.watch(temPermissaoProvider(Permissoes.whatsappCentral));
+    final temEleitoral =
+        ref.watch(temPermissaoProvider(Permissoes.eleitoralVer));
+    final temMunicipes =
+        ref.watch(temPermissaoProvider(Permissoes.eleitoresListar));
+    final temDemandas =
+        ref.watch(temPermissaoProvider(Permissoes.demandasCriar));
+    final temAgenda = ref.watch(temPermissaoProvider(Permissoes.agendaVer));
+
+    final cards = <Widget>[
+      if (temCentral)
+        GradientActionCard(
+          titulo: 'Atendimento',
+          subtitulo: 'Converse com munícipes no WhatsApp',
+          icone: Icons.chat_rounded,
+          cores: const [Color(0xFF128C7E), Color(0xFF25D366)],
+          onTap: () => context.go('/home/atendimento'),
+        ),
+      if (temEleitoral)
+        GradientActionCard(
+          titulo: 'Central Eleitoral',
+          subtitulo: 'Mapa de calor, rankings e IA',
+          icone: Icons.local_fire_department_rounded,
+          cores: const [Color(0xFF16213E), Color(0xFF3949AB)],
+          onTap: () => context.go('/home/eleitoral'),
+        ),
+      if (temMunicipes)
+        GradientActionCard(
+          titulo: 'Novo Munícipe',
+          subtitulo: 'Cadastre um contato agora',
+          icone: Icons.person_add_rounded,
+          cores: const [Color(0xFF1976D2), Color(0xFF42A5F5)],
+          onTap: () => context.push('/home/constituents/new'),
+        ),
+      if (temDemandas)
+        GradientActionCard(
+          titulo: 'Nova Demanda',
+          subtitulo: 'Registre uma solicitação',
+          icone: Icons.post_add_rounded,
+          cores: const [Color(0xFFEF6C00), Color(0xFFFFA726)],
+          onTap: () => context.push('/home/demands/new'),
+        ),
+      if (temAgenda)
+        GradientActionCard(
+          titulo: 'Agenda',
+          subtitulo: 'Compromissos e eventos',
+          icone: Icons.calendar_month_rounded,
+          cores: const [Color(0xFF00897B), Color(0xFF26A69A)],
+          onTap: () => context.go('/home/agenda'),
+        ),
+    ];
+
+    if (cards.isEmpty) return const SizedBox.shrink();
+
+    return GridView.count(
+      crossAxisCount: 2,
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      mainAxisSpacing: AppSpacing.sm,
+      crossAxisSpacing: AppSpacing.sm,
+      childAspectRatio: 1.5,
+      children: cards,
     );
   }
 }

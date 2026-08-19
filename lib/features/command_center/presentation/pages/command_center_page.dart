@@ -24,9 +24,24 @@ class CommandCenterPage extends ConsumerWidget {
     final contexto = ref.watch(iaContextoProvider);
     final election = ref.watch(selectedElectionProvider);
 
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final corHeader =
+        isDark ? const Color(0xFF10151F) : const Color(0xFF16213E);
+
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Command Center'),
+        backgroundColor: corHeader,
+        foregroundColor: Colors.white,
+        automaticallyImplyLeading: false,
+        title: const Row(
+          children: [
+            Icon(Icons.auto_awesome_rounded,
+                color: Color(0xFFFFD54F), size: 22),
+            SizedBox(width: 8),
+            Text('Command Center',
+                style: TextStyle(fontWeight: FontWeight.w800, fontSize: 17)),
+          ],
+        ),
         actions: [
           if (contexto != null)
             IconButton(

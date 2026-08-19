@@ -40,22 +40,45 @@ class EleitoralVisaoPage extends ConsumerWidget {
             actions: [
               if (eleicao != null)
                 Padding(
-                  padding: const EdgeInsets.only(right: 8),
-                  child: ActionChip(
-                    avatar: const Icon(Icons.how_to_vote_rounded,
-                        size: 16, color: Colors.white),
-                    label: Text(
-                      eleicao.label,
-                      style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 11,
-                          fontWeight: FontWeight.w700),
+                  padding: const EdgeInsets.only(right: 10),
+                  child: Center(
+                    child: Material(
+                      color: Colors.white.withValues(alpha: 0.14),
+                      borderRadius: BorderRadius.circular(20),
+                      child: InkWell(
+                        borderRadius: BorderRadius.circular(20),
+                        onTap: () =>
+                            context.push('/home/eleitoral/selecionar'),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 12, vertical: 7),
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(
+                                color:
+                                    Colors.white.withValues(alpha: 0.3)),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(Icons.how_to_vote_rounded,
+                                  size: 14, color: Colors.white),
+                              const SizedBox(width: 6),
+                              Text(
+                                eleicao.label,
+                                style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w700),
+                              ),
+                              const SizedBox(width: 4),
+                              const Icon(Icons.expand_more_rounded,
+                                  size: 14, color: Colors.white70),
+                            ],
+                          ),
+                        ),
+                      ),
                     ),
-                    backgroundColor: Colors.white.withValues(alpha: 0.12),
-                    side: BorderSide(
-                        color: Colors.white.withValues(alpha: 0.25)),
-                    onPressed: () =>
-                        context.push('/home/eleitoral/selecionar'),
                   ),
                 ),
             ],

@@ -149,6 +149,9 @@ final filtrosSelecionadosProvider =
   FiltrosSelecionadosNotifier.new,
 );
 
+/// Filtro por cidade (eleições municipais): nome parcial do município.
+final cidadeFiltroProvider = StateProvider<String>((ref) => '');
+
 // ─── Lista paginada de candidatos ────────────────────────────────────────────
 
 class CandidatosListState {
@@ -191,6 +194,7 @@ class CandidatosListNotifier extends Notifier<CandidatosListState> {
   @override
   CandidatosListState build() {
     ref.listen(filtrosSelecionadosProvider, (_, __) => refresh());
+    ref.listen(cidadeFiltroProvider, (_, __) => refresh());
     return const CandidatosListState(isLoading: true);
   }
 
@@ -214,6 +218,7 @@ class CandidatosListNotifier extends Notifier<CandidatosListState> {
         estado: filtros.estado,
         cargo: filtros.cargo,
         search: filtros.search,
+        municipio: ref.read(cidadeFiltroProvider),
         page: page,
       );
       final newItems =

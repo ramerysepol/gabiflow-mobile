@@ -214,10 +214,27 @@ class _ConstituentTile extends StatelessWidget {
   String _initials(String nome) {
     final parts = nome.trim().split(' ');
     if (parts.length >= 2) {
-      return '${parts.first[0]}${parts.last[0]}'.toUpperCase();
+      return '${parts.first.characters.first}${parts.last.characters.first}'
+          .toUpperCase();
     }
-    return nome.isNotEmpty ? nome[0].toUpperCase() : '?';
+    return nome.isNotEmpty ? nome.characters.first.toUpperCase() : '?';
   }
+
+  // Cor estável por pessoa (estilo WhatsApp): o mesmo nome sempre ganha a
+  // mesma cor, e a lista fica viva em vez de monocromática.
+  static const _paletaAvatar = [
+    Color(0xFF1976D2),
+    Color(0xFF388E3C),
+    Color(0xFF7B1FA2),
+    Color(0xFFEF6C00),
+    Color(0xFF00897B),
+    Color(0xFFD84315),
+    Color(0xFF3949AB),
+    Color(0xFFC2185B),
+  ];
+
+  Color _corAvatar(String nome) =>
+      _paletaAvatar[nome.hashCode.abs() % _paletaAvatar.length];
 
   @override
   Widget build(BuildContext context) {
@@ -263,14 +280,27 @@ class _ConstituentTile extends StatelessWidget {
             ),
             child: Row(
               children: [
-                CircleAvatar(
-                  radius: 22,
-                  backgroundColor: cs.primaryContainer,
+                Container(
+                  width: 44,
+                  height: 44,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    gradient: LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [
+                        _corAvatar(constituent.nome),
+                        _corAvatar(constituent.nome)
+                            .withValues(alpha: 0.75),
+                      ],
+                    ),
+                  ),
+                  alignment: Alignment.center,
                   child: Text(
                     _initials(constituent.nome),
-                    style: TextStyle(
-                      color: cs.primary,
-                      fontWeight: FontWeight.bold,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w800,
                       fontSize: 14,
                     ),
                   ),
@@ -312,8 +342,25 @@ class _ConstituentTile extends StatelessWidget {
                     ],
                   ),
                 ),
-                Icon(Icons.chevron_right_rounded,
-                    color: cs.onSurfaceVariant, size: 20),
+                if (constituent.whatsapp != null ||
+                    constituent.telefone != null)
+                  Material(
+                    color: const Color(0xFF25D366).withValues(alpha: 0.14),
+                    shape: const CircleBorder(),
+                    child: InkWell(
+                      customBorder: const CircleBorder(),
+                      onTap: () => _openWhatsApp(
+                          constituent.whatsapp ?? constituent.telefone),
+                      child: const Padding(
+                        padding: EdgeInsets.all(9),
+                        child: Icon(Icons.chat_rounded,
+                            color: Color(0xFF128C7E), size: 18),
+                      ),
+                    ),
+                  )
+                else
+                  Icon(Icons.chevron_right_rounded,
+                      color: cs.onSurfaceVariant, size: 20),
               ],
             ),
           ),

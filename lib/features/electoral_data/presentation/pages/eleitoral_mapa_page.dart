@@ -36,6 +36,14 @@ class _EleitoralMapaPageState extends ConsumerState<EleitoralMapaPage> {
 
   @override
   Widget build(BuildContext context) {
+    // Candidato pertence à eleição: trocou a eleição, limpa a seleção.
+    ref.listen(selectedElectionProvider, (prev, next) {
+      if (prev != null && next != null && prev.label != next.label &&
+          _candidato != null) {
+        setState(() => _candidato = null);
+      }
+    });
+
     final eleicao = ref.watch(selectedElectionProvider);
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final corHeader =

@@ -241,12 +241,30 @@ class _DemandCard extends StatelessWidget {
     final isOverdue =
         deadline != null && deadline.isBefore(DateTime.now());
 
+    // Faixa de status na borda: leitura instantânea do estado da demanda.
+    final st = demand.status.toLowerCase();
+    final faixa = isOverdue
+        ? const Color(0xFFE53935)
+        : st.contains('resolv') || st.contains('conclu')
+            ? const Color(0xFF388E3C)
+            : st.contains('andamento') || st.contains('progress')
+                ? const Color(0xFF1976D2)
+                : st.contains('cancel')
+                    ? const Color(0xFF9E9E9E)
+                    : const Color(0xFFEF6C00);
+
     return Card(
       margin: EdgeInsets.zero,
+      clipBehavior: Clip.antiAlias,
       child: InkWell(
-        borderRadius: BorderRadius.circular(AppRadius.card),
         onTap: () => context.push('/home/demands/${demand.id}'),
-        child: Padding(
+        child: IntrinsicHeight(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Container(width: 4, color: faixa),
+              Expanded(
+                child: Padding(
           padding: const EdgeInsets.all(AppSpacing.md),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -300,6 +318,10 @@ class _DemandCard extends StatelessWidget {
                     ),
                   ],
                 ],
+              ),
+            ],
+          ),
+                ),
               ),
             ],
           ),

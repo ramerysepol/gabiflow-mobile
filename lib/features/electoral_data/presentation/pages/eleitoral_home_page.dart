@@ -99,15 +99,24 @@ class _EleitoralHomePageState extends ConsumerState<EleitoralHomePage> {
     final state = ref.watch(candidatosListProvider);
     final cs = Theme.of(context).colorScheme;
 
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final corHeader =
+        isDark ? const Color(0xFF10151F) : const Color(0xFF16213E);
+
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Dados Eleitorais'),
+        backgroundColor: corHeader,
+        foregroundColor: Colors.white,
+        automaticallyImplyLeading: false,
+        title: const Row(
+          children: [
+            Icon(Icons.groups_rounded, color: Color(0xFF64B5F6), size: 22),
+            SizedBox(width: 8),
+            Text('Candidatos',
+                style: TextStyle(fontWeight: FontWeight.w800, fontSize: 17)),
+          ],
+        ),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.auto_awesome),
-            tooltip: 'Command Center IA',
-            onPressed: () => context.push('/home/eleitoral/ia'),
-          ),
           IconButton(
             icon: const Icon(Icons.insights_rounded),
             tooltip: 'Análise da eleição',
@@ -117,11 +126,6 @@ class _EleitoralHomePageState extends ConsumerState<EleitoralHomePage> {
             icon: const Icon(Icons.compare_arrows_rounded),
             tooltip: 'Comparar candidatos',
             onPressed: () => context.push('/home/eleitoral/comparar'),
-          ),
-          IconButton(
-            icon: const Icon(Icons.leaderboard_outlined),
-            tooltip: 'Rankings',
-            onPressed: () => context.push('/home/eleitoral/rankings'),
           ),
         ],
       ),
@@ -169,6 +173,41 @@ class _EleitoralHomePageState extends ConsumerState<EleitoralHomePage> {
               ),
             ),
           ),
+
+          // ── Filtro por cidade (eleições municipais: prefeito/vereador) ──
+          if (election.ano % 4 == 0)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 6, 16, 0),
+              child: Consumer(builder: (context, ref, _) {
+                final cidade = ref.watch(cidadeFiltroProvider);
+                return cidade.isEmpty
+                    ? Align(
+                        alignment: Alignment.centerLeft,
+                        child: ActionChip(
+                          avatar: const Icon(Icons.location_city_rounded,
+                              size: 16),
+                          label: const Text('Filtrar por cidade',
+                              style: TextStyle(fontSize: 12)),
+                          onPressed: () => _perguntarCidade(context),
+                        ),
+                      )
+                    : Align(
+                        alignment: Alignment.centerLeft,
+                        child: InputChip(
+                          avatar: const Icon(Icons.location_city_rounded,
+                              size: 16, color: Color(0xFF1976D2)),
+                          label: Text(cidade,
+                              style: const TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w700)),
+                          onPressed: () => _perguntarCidade(context),
+                          onDeleted: () => ref
+                              .read(cidadeFiltroProvider.notifier)
+                              .state = '',
+                        ),
+                      );
+              }),
+            ),
           const SizedBox(height: 8),
 
           // ── Lista ─────────────────────────────────────────────────────
@@ -182,6 +221,43 @@ class _EleitoralHomePageState extends ConsumerState<EleitoralHomePage> {
         ],
       ),
     );
+  }
+
+  Future<void> _perguntarCidade(BuildContext context) async {
+    final ctrl =
+        TextEditingController(text: ref.read(cidadeFiltroProvider));
+    final cidade = await showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Filtrar por cidade'),
+        content: SizedBox(
+          width: 320,
+          child: TextField(
+            controller: ctrl,
+            autofocus: true,
+            textCapitalization: TextCapitalization.words,
+            decoration: const InputDecoration(
+              hintText: 'ex.: Salvador',
+              border: OutlineInputBorder(),
+            ),
+            onSubmitted: (v) => Navigator.of(ctx).pop(v),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(''),
+            child: const Text('Limpar'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(ctx).pop(ctrl.text),
+            child: const Text('Aplicar'),
+          ),
+        ],
+      ),
+    );
+    if (cidade != null) {
+      ref.read(cidadeFiltroProvider.notifier).state = cidade.trim();
+    }
   }
 
   Widget _buildList(CandidatosListState state, ColorScheme cs) {

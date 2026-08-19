@@ -65,6 +65,15 @@ class HomePage extends ConsumerWidget {
     if (rootIndex < 0) return child;
 
     final isHome = rootIndex == 0;
+
+    // Identidade visual por aba (cor + marca-d'água) — DNA da Central
+    final cs0 = Theme.of(context).colorScheme;
+    final (accent, iconeAba) = switch (titles[rootIndex]) {
+      'Munícipes' => (const Color(0xFF1976D2), Icons.people_rounded),
+      'Demandas' => (const Color(0xFFEF6C00), Icons.inbox_rounded),
+      'Agenda' => (const Color(0xFF00897B), Icons.calendar_month_rounded),
+      _ => (cs0.primary, null),
+    };
     final user = ref.watch(authProvider).user;
     final cs = Theme.of(context).colorScheme;
     final ink = AppColors.inkTinted(cs.primary);
@@ -79,6 +88,8 @@ class HomePage extends ConsumerWidget {
                     ink: ink,
                     isHome: isHome,
                     title: titles[rootIndex],
+                    accent: accent,
+                    icone: iconeAba,
                     userName: user?.name,
                     avatarData: user?.avatar,
                     onLogout: () => _confirmLogout(context, ref),
@@ -142,6 +153,8 @@ class _InkHeader extends StatelessWidget {
     required this.ink,
     required this.isHome,
     required this.title,
+    required this.accent,
+    required this.icone,
     required this.userName,
     required this.avatarData,
     required this.onLogout,
@@ -150,25 +163,30 @@ class _InkHeader extends StatelessWidget {
   final Color ink;
   final bool isHome;
   final String title;
+
+  /// Cor de identidade da aba (Munícipes azul, Demandas laranja...).
+  final Color accent;
+
+  /// Marca-d'água da aba no canto do header.
+  final IconData? icone;
+
   final String? userName;
   final String? avatarData;
   final VoidCallback onLogout;
 
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-
     return Container(
       decoration: BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [Color.lerp(ink, cs.primary, 0.12)!, ink],
+          colors: [Color.lerp(ink, accent, 0.35)!, ink],
         ),
       ),
       child: Stack(
         children: [
-          // Brilho sutil da cor do gabinete no canto superior direito
+          // Brilho da cor de identidade no canto superior direito
           Positioned(
             top: -60,
             right: -40,
@@ -179,13 +197,24 @@ class _InkHeader extends StatelessWidget {
                 shape: BoxShape.circle,
                 gradient: RadialGradient(
                   colors: [
-                    cs.primary.withValues(alpha: 0.22),
-                    cs.primary.withValues(alpha: 0),
+                    accent.withValues(alpha: 0.30),
+                    accent.withValues(alpha: 0),
                   ],
                 ),
               ),
             ),
           ),
+          // Marca-d'água do módulo
+          if (icone != null)
+            Positioned(
+              right: -8,
+              bottom: -22,
+              child: Icon(
+                icone,
+                size: 108,
+                color: Colors.white.withValues(alpha: 0.08),
+              ),
+            ),
           SafeArea(
             bottom: false,
             child: Padding(
@@ -229,15 +258,37 @@ class _InkHeader extends StatelessWidget {
                               ),
                             ],
                           )
-                        : Text(
-                            title,
-                            style: Theme.of(context)
-                                .textTheme
-                                .titleLarge
-                                ?.copyWith(
-                                  fontSize: 20,
-                                  color: Colors.white,
+                        : Row(
+                            children: [
+                              if (icone != null) ...[
+                                Container(
+                                  padding: const EdgeInsets.all(6),
+                                  decoration: BoxDecoration(
+                                    color:
+                                        Colors.white.withValues(alpha: 0.14),
+                                    borderRadius: BorderRadius.circular(9),
+                                  ),
+                                  child: Icon(icone,
+                                      size: 16, color: Colors.white),
                                 ),
+                                const SizedBox(width: 8),
+                              ],
+                              Flexible(
+                                child: Text(
+                                  title,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: Theme.of(context)
+                                      .textTheme
+                                      .titleLarge
+                                      ?.copyWith(
+                                        fontSize: 20,
+                                        fontWeight: FontWeight.w800,
+                                        color: Colors.white,
+                                      ),
+                                ),
+                              ),
+                            ],
                           ),
                   ),
                   IconButton(
