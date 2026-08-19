@@ -35,13 +35,14 @@ class AppBottomNav extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final border =
-        isDark ? AppColors.borderSubtleDark : AppColors.borderSubtleLight;
 
+    // Dock escuro (padrao da Central Eleitoral) em todo o app.
     return Container(
       decoration: BoxDecoration(
-        color: isDark ? AppColors.surfaceDefaultDark : Colors.white,
-        border: Border(top: BorderSide(color: border)),
+        color: isDark ? const Color(0xFF10151F) : const Color(0xFF16213E),
+        border: Border(
+          top: BorderSide(color: Colors.white.withValues(alpha: 0.08)),
+        ),
       ),
       child: SafeArea(
         top: false,
@@ -90,11 +91,9 @@ class _DockItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final mutedColor =
-        isDark ? AppColors.neutral600Dark : AppColors.neutral600Light;
-    final color = selected ? cs.primary : mutedColor;
+    // Sobre o dock escuro: ativo em branco cheio, inativo em branco suave.
+    final color = selected ? Colors.white : Colors.white60;
 
     return Semantics(
       selected: selected,
@@ -113,7 +112,7 @@ class _DockItem extends StatelessWidget {
               padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 4),
               decoration: BoxDecoration(
                 color: selected
-                    ? cs.primary.withValues(alpha: isDark ? 0.24 : 0.12)
+                    ? Colors.white.withValues(alpha: 0.18)
                     : Colors.transparent,
                 borderRadius: BorderRadius.circular(AppRadius.full),
               ),

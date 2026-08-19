@@ -76,7 +76,11 @@ class HomePage extends ConsumerWidget {
     };
     final user = ref.watch(authProvider).user;
     final cs = Theme.of(context).colorScheme;
-    final ink = AppColors.inkTinted(cs.primary);
+    // Base escura "war room" (padrao da Central Eleitoral) em todo o app;
+    // o accent de cada aba entra como brilho/gradiente por cima.
+    final isDarkTema = Theme.of(context).brightness == Brightness.dark;
+    final ink =
+        isDarkTema ? const Color(0xFF10151F) : const Color(0xFF16213E);
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: SystemUiOverlayStyle.light,

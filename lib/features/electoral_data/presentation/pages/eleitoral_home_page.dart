@@ -142,7 +142,7 @@ class _EleitoralHomePageState extends ConsumerState<EleitoralHomePage> {
 
           // ── Banner do Command Center IA ───────────────────────────────
           _CommandCenterBanner(
-            onTap: () => context.push('/home/eleitoral/ia'),
+            onTap: () => context.go('/home/eleitoral/ia'),
           ),
 
           const SizedBox(height: 4),

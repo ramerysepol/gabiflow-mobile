@@ -94,7 +94,7 @@ class _CandidatoViewState extends ConsumerState<_CandidatoView>
                   fotoUrl: c.fotoUrl,
                 ),
               );
-          if (context.mounted) context.push('/home/eleitoral/ia');
+          if (context.mounted) context.go('/home/eleitoral/ia');
         },
         icon: const Icon(Icons.auto_awesome, size: 18),
         label: const Text('Analisar com IA'),
