@@ -353,6 +353,27 @@ class _GoogleCalendarCardState extends ConsumerState<_GoogleCalendarCard> {
   bool _sincronizando = false;
   bool _conectando = false;
 
+  /// Nunca mostrar exceção crua pro atendente: traduz as falhas mais comuns
+  /// em orientação (a principal: integração não configurada no gabinete).
+  String _mensagemAmigavel(Object e) {
+    final s = e.toString().toLowerCase();
+    if (s.contains('500') ||
+        s.contains('erro interno') ||
+        s.contains('internal') ||
+        s.contains('nao retornou')) {
+      return 'A agenda Google ainda não está configurada para este gabinete. '
+          'Peça ao administrador para configurar a integração no painel '
+          '(Configurações → Agenda → Google Calendar).';
+    }
+    if (s.contains('403') || s.contains('permiss')) {
+      return 'Você não tem permissão para conectar o Google Calendar.';
+    }
+    if (s.contains('socket') || s.contains('connection') || s.contains('timeout')) {
+      return 'Sem conexão com o servidor agora. Tente novamente em instantes.';
+    }
+    return 'Não foi possível concluir agora. Tente novamente em instantes.';
+  }
+
   Future<void> _conectar() async {
     setState(() => _conectando = true);
     try {
@@ -368,8 +389,10 @@ class _GoogleCalendarCardState extends ConsumerState<_GoogleCalendarCard> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Falha ao iniciar conexão: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(_mensagemAmigavel(e)),
+          duration: const Duration(seconds: 6),
+        ));
       }
     } finally {
       if (mounted) setState(() => _conectando = false);
@@ -388,8 +411,10 @@ class _GoogleCalendarCardState extends ConsumerState<_GoogleCalendarCard> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text('Falha ao sincronizar: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(_mensagemAmigavel(e)),
+          duration: const Duration(seconds: 6),
+        ));
       }
     } finally {
       if (mounted) setState(() => _sincronizando = false);
