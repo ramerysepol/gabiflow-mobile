@@ -25,7 +25,11 @@ class MapaBaWidget extends ConsumerStatefulWidget {
     this.fullScreen = false,
     this.onMicrorregiaoTap,
     this.onBuscaTap,
+    this.modoInicialCalor = false,
   });
+
+  /// Abre o mapa já no modo mapa de calor (aba Mapa do sub-app Eleitoral).
+  final bool modoInicialCalor;
 
   final List<MunicipioVotoModel> municipios;
   final int maxVotos;
@@ -65,6 +69,7 @@ class _MapaBaWidgetState extends ConsumerState<MapaBaWidget>
   void initState() {
     super.initState();
     _mapController = MapController();
+    _modoHeatmap = widget.modoInicialCalor;
   }
 
   @override
@@ -229,7 +234,7 @@ class _MapaBaWidgetState extends ConsumerState<MapaBaWidget>
                 onBuscaTap: widget.onBuscaTap ?? _abrirSeletorMunicipio,
               ),
               const SizedBox(height: 8),
-              const MapaLegenda(),
+              MapaLegenda(modoCalor: _modoHeatmap),
             ],
           ),
         ),

@@ -5,7 +5,10 @@ import '../../data/services/mesorregiao_colors.dart';
 /// Legenda colapsável das 7 mesorregiões + escala de intensidade.
 /// Posicionada bottom-right sobre o mapa.
 class MapaLegenda extends StatefulWidget {
-  const MapaLegenda({super.key});
+  const MapaLegenda({super.key, this.modoCalor = false});
+
+  /// No modo calor a lista de mesorregiões some — só a escala de intensidade.
+  final bool modoCalor;
 
   @override
   State<MapaLegenda> createState() => _MapaLegendaState();
@@ -116,7 +119,8 @@ class _MapaLegendaState extends State<MapaLegenda>
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   const Divider(height: 8, thickness: 0.5),
-                  // Mesorregiões
+                  // Mesorregiões (ocultas no modo calor)
+                  if (!widget.modoCalor)
                   ..._mesorregioes.map((e) {
                     final color = MesorregiaoColors.cores[e.$2] ??
                         const Color(0xFF388E3C);
@@ -145,7 +149,8 @@ class _MapaLegendaState extends State<MapaLegenda>
                       ),
                     );
                   }),
-                  const Divider(height: 10, thickness: 0.5),
+                  if (!widget.modoCalor)
+                    const Divider(height: 10, thickness: 0.5),
                   // Escala de intensidade
                   Text(
                     'Intensidade de votos',

@@ -54,31 +54,26 @@ class HomePage extends ConsumerWidget {
     ];
 
     final location = GoRouterState.of(context).uri.path;
+
+    // Sub-app Eleitoral: tela cheia com barra propria (EleitoralShell);
+    // so o "X" da Visao Geral devolve ao GabiFlow.
+    if (location.startsWith('/home/eleitoral')) return child;
+
     final rootIndex = routes.indexOf(location);
 
     // Sub-página (detalhe/formulário): tela cheia, sem header nem dock.
     if (rootIndex < 0) return child;
 
     final isHome = rootIndex == 0;
-    final isEleitoral = location == '/home/eleitoral';
     final user = ref.watch(authProvider).user;
     final cs = Theme.of(context).colorScheme;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
     final ink = AppColors.inkTinted(cs.primary);
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
-      value: isEleitoral
-          ? (isDark
-              ? SystemUiOverlayStyle.light
-              : SystemUiOverlayStyle.dark)
-          : SystemUiOverlayStyle.light,
+      value: SystemUiOverlayStyle.light,
       child: Scaffold(
-        backgroundColor: isEleitoral
-            ? Theme.of(context).scaffoldBackgroundColor
-            : ink,
-        body: isEleitoral
-            ? child
-            : Column(
+        backgroundColor: ink,
+        body: Column(
                 children: [
                   _InkHeader(
                     ink: ink,

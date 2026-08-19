@@ -24,6 +24,9 @@ import '../../features/electoral_data/presentation/pages/analise_page.dart';
 import '../../features/electoral_data/presentation/pages/candidato_comparar_page.dart';
 import '../../features/electoral_data/presentation/pages/candidato_detail_page.dart';
 import '../../features/electoral_data/presentation/pages/eleitoral_home_page.dart';
+import '../../features/electoral_data/presentation/pages/eleitoral_mapa_page.dart';
+import '../../features/electoral_data/presentation/pages/eleitoral_shell.dart';
+import '../../features/electoral_data/presentation/pages/eleitoral_visao_page.dart';
 import '../../features/electoral_data/presentation/pages/rankings_page.dart';
 import '../../features/electoral_data/presentation/pages/seletor_eleicao_page.dart';
 import '../../features/electoral_data/presentation/pages/simulador_page.dart';
@@ -195,10 +198,33 @@ final GoRouter appRouter = GoRouter(
           },
         ),
 
-        // ── Dados Eleitorais ──────────────────────────────────────────────
-        GoRoute(
-          path: '/home/eleitoral',
-          builder: (_, __) => const EleitoralHomePage(),
+        // ── Dados Eleitorais (sub-app com barra própria) ──────────────────
+        // As 5 abas vivem dentro do EleitoralShell; o resto abre em tela
+        // cheia por cima (detalhe, comparar, seletor...).
+        ShellRoute(
+          builder: (context, state, child) => EleitoralShell(child: child),
+          routes: [
+            GoRoute(
+              path: '/home/eleitoral',
+              builder: (_, __) => const EleitoralVisaoPage(),
+            ),
+            GoRoute(
+              path: '/home/eleitoral/mapa',
+              builder: (_, __) => const EleitoralMapaPage(),
+            ),
+            GoRoute(
+              path: '/home/eleitoral/candidatos',
+              builder: (_, __) => const EleitoralHomePage(),
+            ),
+            GoRoute(
+              path: '/home/eleitoral/rankings',
+              builder: (_, __) => const RankingsPage(),
+            ),
+            GoRoute(
+              path: '/home/eleitoral/ia',
+              builder: (_, __) => const CommandCenterPage(),
+            ),
+          ],
         ),
         GoRoute(
           path: '/home/eleitoral/selecionar',
@@ -209,16 +235,8 @@ final GoRouter appRouter = GoRouter(
           builder: (_, __) => const CompararPage(),
         ),
         GoRoute(
-          path: '/home/eleitoral/rankings',
-          builder: (_, __) => const RankingsPage(),
-        ),
-        GoRoute(
           path: '/home/eleitoral/analise',
           builder: (_, __) => const AnalisePage(),
-        ),
-        GoRoute(
-          path: '/home/eleitoral/ia',
-          builder: (_, __) => const CommandCenterPage(),
         ),
         GoRoute(
           path: '/home/eleitoral/ia/chat',

@@ -15,12 +15,14 @@ class CandidatoMapaPage extends ConsumerStatefulWidget {
     required this.municipios,
     required this.maxVotos,
     this.embedded = false,
+    this.modoInicialCalor = false,
   });
 
   final String sequencial;
   final List<MunicipioVotoModel> municipios;
   final int maxVotos;
   final bool embedded;
+  final bool modoInicialCalor;
 
   @override
   ConsumerState<CandidatoMapaPage> createState() =>
@@ -87,6 +89,7 @@ class _CandidatoMapaPageState extends ConsumerState<CandidatoMapaPage> {
       microrregiaoIds: _microrregiaoIds,
       fullScreen: !widget.embedded,
       onMicrorregiaoTap: _abrirSeletorMicrorregiao,
+      modoInicialCalor: widget.modoInicialCalor,
     );
 
     if (widget.embedded) {
