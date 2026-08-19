@@ -3,11 +3,12 @@
 #   - upload-keystore.jks -> S3 pagmeia-v2-prod-files/cofre/gabiflow-mobile/ (criptografado)
 #   - key.properties      -> SSM Parameter Store (SecureString)
 #
-# Conta 600301049827 (mesma do PagMeia). Perfil local: pagmeia-admin.
+# Conta 600301049827 (mesma do PagMeia). Perfis locais testados em 19/08/2026:
+#   S3 (PutObject no bucket) -> perfil "default" (pagmeia-v2-s3-uploader)
+#   SSM (PutParameter)       -> perfil "pagmeia-admin" (pagmeia-infra-admin)
 # Uso (na raiz do gabiflow-mobile): ./scripts/guardar-keystore-aws.sh
 set -euo pipefail
 
-export AWS_PROFILE=pagmeia-admin
 JKS="android/app/upload-keystore.jks"
 PROPS="android/key.properties"
 BUCKET="pagmeia-v2-prod-files"
@@ -21,6 +22,7 @@ aws s3 cp "$JKS" "s3://$BUCKET/cofre/gabiflow-mobile/upload-keystore.jks" \
 
 echo "[2/2] key.properties -> SSM (SecureString, senha nunca aparece na tela)..."
 aws ssm put-parameter \
+  --profile pagmeia-admin \
   --region sa-east-1 \
   --name "/gabiflow/mobile/android-key-properties" \
   --type SecureString \
