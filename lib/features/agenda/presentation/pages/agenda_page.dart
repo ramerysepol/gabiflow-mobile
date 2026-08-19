@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:table_calendar/table_calendar.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../../../core/auth/permissoes.dart';
 import '../../../../core/theme/design_tokens.dart';
@@ -36,6 +37,9 @@ class _AgendaPageState extends ConsumerState<AgendaPage> {
           onRefresh: () => ref.read(eventListProvider.notifier).refresh(),
           child: CustomScrollView(
             slivers: [
+              // Google Calendar: status/conexão/sync manual
+              const SliverToBoxAdapter(child: _GoogleCalendarCard()),
+
               // Calendário
               SliverToBoxAdapter(
                 child: state.isLoading
@@ -326,6 +330,165 @@ class _EventTile extends StatelessWidget {
               Icon(Icons.chevron_right_rounded,
                   color: cs.onSurfaceVariant, size: 20),
               const SizedBox(width: AppSpacing.xs),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Card do Google Calendar no topo da Agenda: mostra o status da conexão,
+/// permite conectar (OAuth no navegador) e sincronizar manualmente.
+/// A sincronização em si é do servidor (bidirecional) — o app só aciona.
+class _GoogleCalendarCard extends ConsumerStatefulWidget {
+  const _GoogleCalendarCard();
+
+  @override
+  ConsumerState<_GoogleCalendarCard> createState() =>
+      _GoogleCalendarCardState();
+}
+
+class _GoogleCalendarCardState extends ConsumerState<_GoogleCalendarCard> {
+  bool _sincronizando = false;
+  bool _conectando = false;
+
+  Future<void> _conectar() async {
+    setState(() => _conectando = true);
+    try {
+      final url =
+          await ref.read(googleAgendaDatasourceProvider).authUrl();
+      await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text(
+              'Conclua a autorização no navegador e volte — depois puxe para atualizar.'),
+          duration: Duration(seconds: 5),
+        ));
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Falha ao iniciar conexão: $e')));
+      }
+    } finally {
+      if (mounted) setState(() => _conectando = false);
+    }
+  }
+
+  Future<void> _sincronizar() async {
+    setState(() => _sincronizando = true);
+    try {
+      await ref.read(googleAgendaDatasourceProvider).sincronizar();
+      ref.invalidate(googleAgendaStatusProvider);
+      await ref.read(eventListProvider.notifier).refresh();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+            content: Text('Agenda sincronizada com o Google.')));
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text('Falha ao sincronizar: $e')));
+      }
+    } finally {
+      if (mounted) setState(() => _sincronizando = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final status = ref.watch(googleAgendaStatusProvider);
+    final cs = Theme.of(context).colorScheme;
+
+    return status.when(
+      loading: () => const SizedBox.shrink(),
+      error: (_, __) => const SizedBox.shrink(),
+      data: (s) => Padding(
+        padding: const EdgeInsets.fromLTRB(
+            AppSpacing.md, AppSpacing.sm, AppSpacing.md, 0),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          decoration: BoxDecoration(
+            color: s.conectado
+                ? const Color(0xFF4285F4).withValues(alpha: 0.08)
+                : cs.surfaceContainerHighest.withValues(alpha: 0.5),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: s.conectado
+                  ? const Color(0xFF4285F4).withValues(alpha: 0.35)
+                  : cs.outlineVariant,
+            ),
+          ),
+          child: Row(
+            children: [
+              Icon(
+                s.conectado
+                    ? Icons.cloud_done_rounded
+                    : Icons.cloud_off_rounded,
+                size: 20,
+                color: s.conectado
+                    ? const Color(0xFF4285F4)
+                    : cs.outline,
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      s.conectado
+                          ? 'Google Calendar conectado'
+                          : 'Google Calendar',
+                      style: const TextStyle(
+                          fontSize: 12.5, fontWeight: FontWeight.w700),
+                    ),
+                    Text(
+                      s.conectado
+                          ? (s.erroSync != null
+                              ? 'Erro na última sync'
+                              : s.ultimaSync != null
+                                  ? 'Sync: ${DateFormat('dd/MM HH:mm').format(s.ultimaSync!.toLocal())}'
+                                  : 'Conectado — sincronize agora')
+                          : 'Veja seus compromissos do Google aqui',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 10.5,
+                        color: s.erroSync != null
+                            ? cs.error
+                            : cs.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              if (s.conectado)
+                IconButton(
+                  tooltip: 'Sincronizar agora',
+                  onPressed: _sincronizando ? null : _sincronizar,
+                  icon: _sincronizando
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child:
+                              CircularProgressIndicator(strokeWidth: 2))
+                      : const Icon(Icons.sync_rounded,
+                          size: 20, color: Color(0xFF4285F4)),
+                )
+              else
+                TextButton(
+                  onPressed: _conectando ? null : _conectar,
+                  child: _conectando
+                      ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child:
+                              CircularProgressIndicator(strokeWidth: 2))
+                      : const Text('Conectar',
+                          style: TextStyle(
+                              fontSize: 12, fontWeight: FontWeight.w700)),
+                ),
             ],
           ),
         ),

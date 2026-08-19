@@ -2,12 +2,25 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/providers/api_providers.dart';
 import '../../data/datasources/event_remote_datasource.dart';
+import '../../data/datasources/google_agenda_datasource.dart';
 import '../../data/models/event_model.dart';
 
 // ── DataSource ──────────────────────────────────────────────────────────────
 
 final eventDataSourceProvider = Provider<EventRemoteDataSource>((ref) {
   return EventRemoteDataSourceImpl(ref.watch(apiClientProvider));
+});
+
+// ─── Google Calendar ─────────────────────────────────────────────────────────
+
+final googleAgendaDatasourceProvider = Provider<GoogleAgendaDatasource>((ref) {
+  return GoogleAgendaDatasource(ref.watch(apiClientProvider));
+});
+
+/// Status da conexão com o Google Calendar (conectado, última sync, erro).
+final googleAgendaStatusProvider =
+    FutureProvider.autoDispose<GoogleAgendaStatus>((ref) {
+  return ref.watch(googleAgendaDatasourceProvider).status();
 });
 
 // ── Lista mensal ─────────────────────────────────────────────────────────────

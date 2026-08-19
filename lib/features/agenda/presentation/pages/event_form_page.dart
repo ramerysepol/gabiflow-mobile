@@ -306,6 +306,10 @@ class _EventFormPageState extends ConsumerState<EventFormPage> {
                     .map((t) => DropdownMenuItem(
                           value: t.valor,
                           child: Row(
+                            // min + sem flex: o menu do dropdown mede os
+                            // itens com largura infinita e qualquer flex
+                            // derruba o layout (tela branca no formulario).
+                            mainAxisSize: MainAxisSize.min,
                             children: [
                               Container(
                                 width: 10,
@@ -316,11 +320,9 @@ class _EventFormPageState extends ConsumerState<EventFormPage> {
                                 ),
                               ),
                               const SizedBox(width: 8),
-                              Flexible(
-                                child: Text(
-                                  t.rotulo,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
+                              Text(
+                                t.rotulo,
+                                overflow: TextOverflow.ellipsis,
                               ),
                             ],
                           ),
