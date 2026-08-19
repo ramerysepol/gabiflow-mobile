@@ -69,12 +69,27 @@ class _AudioCentral {
     });
   }
 
+  /// iOS não decodifica ogg/opus (formato das notas de voz do WhatsApp).
+  /// No iPhone, áudios .ogg de /uploads passam pela rota de transcodificação
+  /// AAC do servidor; Android e demais tocam a URL original.
+  static String _urlReproducao(String url) {
+    if (!Platform.isIOS) return url;
+    final uri = Uri.tryParse(url);
+    if (uri == null) return url;
+    final p = uri.path.toLowerCase();
+    final ehOgg = p.endsWith('.ogg') || p.endsWith('.opus') || p.endsWith('.oga');
+    if (!ehOgg || !uri.path.startsWith('/uploads/whatsapp/')) return url;
+    return uri
+        .replace(path: '/api/whatsapp/media/aac', queryParameters: {'src': uri.path})
+        .toString();
+  }
+
   static Future<void> tocar(String url) async {
     _garantirListener();
     if (urlAtual.value != url) {
       await player.stop();
       urlAtual.value = url;
-      await player.setUrl(url);
+      await player.setUrl(_urlReproducao(url));
     }
     // Terminou? Volta pro inicio antes de tocar de novo.
     if (player.processingState == ProcessingState.completed) {
