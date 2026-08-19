@@ -62,6 +62,16 @@ class DashboardRemoteDataSourceImpl implements DashboardRemoteDataSource {
       eventsThisWeek: _parseIntFromData(data['eventsThisWeek']),
       messagestoday: _parseIntFromData(data['messagestoday']),
       messagesSent: _parseIntFromData(data['messagesSent']),
+      atendimentosRecebidosHoje:
+          _parseIntFromData(data['atendimentosRecebidosHoje']),
+      atendimentosAguardando:
+          _parseIntFromData(data['atendimentosAguardando']),
+      atendimentosEmAtendimento:
+          _parseIntFromData(data['atendimentosEmAtendimento']),
+      atendimentosAtendidosHoje:
+          _parseIntFromData(data['atendimentosAtendidosHoje']),
+      atendimentosArquivadosHoje:
+          _parseIntFromData(data['atendimentosArquivadosHoje']),
       recentActivities: activities,
     );
   }
