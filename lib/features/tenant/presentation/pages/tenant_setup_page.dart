@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../../core/services/storage_service.dart';
@@ -136,20 +135,19 @@ class _TenantSetupPageState extends ConsumerState<TenantSetupPage> {
                 children: [
                   SizedBox(height: MediaQuery.of(context).size.height * 0.04),
 
-                  // ── Logo animada: entrada suave + pulso contínuo ─────────
+                  // ── Logo animada em placa clara (a logo É o nome) ────────
                   Center(
                     child: Container(
-                      padding: const EdgeInsets.all(20),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 28, vertical: 22),
                       decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: Colors.white.withValues(alpha: 0.06),
-                        border: Border.all(
-                            color: Colors.white.withValues(alpha: 0.12)),
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(24),
                         boxShadow: [
                           BoxShadow(
                             color: const Color(0xFF3949AB)
-                                .withValues(alpha: 0.35),
-                            blurRadius: 40,
+                                .withValues(alpha: 0.45),
+                            blurRadius: 48,
                             spreadRadius: 4,
                           ),
                         ],
@@ -159,8 +157,8 @@ class _TenantSetupPageState extends ConsumerState<TenantSetupPage> {
                             onPlay: (c) => c.repeat(reverse: true),
                           )
                           .scaleXY(
-                            begin: 0.97,
-                            end: 1.05,
+                            begin: 0.98,
+                            end: 1.04,
                             duration: 2200.ms,
                             curve: Curves.easeInOut,
                           ),
@@ -171,20 +169,6 @@ class _TenantSetupPageState extends ConsumerState<TenantSetupPage> {
                       .scale(begin: const Offset(0.7, 0.7)),
 
                   const SizedBox(height: AppSpacing.lg),
-
-                  // ── Marca + tagline ──────────────────────────────────────
-                  Text(
-                    'GabiFlow',
-                    textAlign: TextAlign.center,
-                    style: GoogleFonts.spaceGrotesk(
-                      fontSize: 34,
-                      fontWeight: FontWeight.w800,
-                      color: Colors.white,
-                      letterSpacing: -0.5,
-                    ),
-                  ).animate().fadeIn(delay: 150.ms, duration: 500.ms),
-
-                  const SizedBox(height: 6),
 
                   Text(
                     'O gabinete inteiro no seu bolso',
@@ -199,10 +183,10 @@ class _TenantSetupPageState extends ConsumerState<TenantSetupPage> {
 
                   // ── Vitrine (como no login web) ──────────────────────────
                   const _Destaque(
-                    icone: Icons.chat_rounded,
-                    cor: Color(0xFF25D366),
-                    titulo: 'Central de Atendimento',
-                    texto: 'WhatsApp do gabinete com sua equipe',
+                    icone: Icons.forum_rounded,
+                    cor: Color(0xFF26A69A),
+                    titulo: 'Chat da Equipe',
+                    texto: 'Converse direto com seus munícipes',
                   ).animate().fadeIn(delay: 350.ms).slideX(begin: -0.08),
                   const SizedBox(height: 10),
                   const _Destaque(

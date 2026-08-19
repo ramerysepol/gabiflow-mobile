@@ -13,7 +13,7 @@ import '../../../../core/widgets/primary_button.dart';
 import '../providers/auth_provider.dart';
 import '../providers/auth_refresh_provider.dart';
 
-/// Tela de Login — design premium com lógica de auth preservada.
+/// Tela de Login — hero escuro no padrão do sistema, lógica de auth preservada.
 class LoginPage extends ConsumerStatefulWidget {
   const LoginPage({super.key, required this.tenantSubdomain});
 
@@ -203,190 +203,237 @@ class _LoginPageState extends ConsumerState<LoginPage> {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
     final cs = Theme.of(context).colorScheme;
 
     return Scaffold(
-      appBar: AppBar(
-        leading: const BackButton(),
-      ),
-      body: SafeArea(
-        child: Form(
-          key: _formKey,
-          child: SingleChildScrollView(
-            physics: const BouncingScrollPhysics(),
-            padding: const EdgeInsets.symmetric(
-              horizontal: AppSpacing.screenH,
-              vertical: AppSpacing.screenV,
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                SizedBox(height: MediaQuery.of(context).size.height * 0.02),
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [Color(0xFF0B0F17), Color(0xFF16213E), Color(0xFF1B2B4D)],
+          ),
+        ),
+        child: SafeArea(
+          child: Form(
+            key: _formKey,
+            child: SingleChildScrollView(
+              physics: const BouncingScrollPhysics(),
+              padding: const EdgeInsets.symmetric(
+                horizontal: AppSpacing.screenH,
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  // Voltar
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: IconButton(
+                      icon: const Icon(Icons.arrow_back_rounded,
+                          color: Colors.white),
+                      onPressed: () => context.canPop()
+                          ? context.pop()
+                          : context.go('/tenant-setup'),
+                    ),
+                  ),
 
-                // Monograma do gabinete sobre tinta tingida pela cor do tenant
-                Center(
-                  child: Container(
-                    width: 76,
-                    height: 76,
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(AppRadius.modal),
-                      gradient: LinearGradient(
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                        colors: [
-                          Color.lerp(
-                              AppColors.inkTinted(cs.primary), cs.primary, 0.3)!,
-                          AppColors.inkTinted(cs.primary),
+                  // Monograma do gabinete tingido pela cor do tenant
+                  Center(
+                    child: Container(
+                      width: 84,
+                      height: 84,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(AppRadius.modal),
+                        gradient: LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: [
+                            Color.lerp(cs.primary, Colors.white, 0.15)!,
+                            cs.primary,
+                          ],
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: cs.primary.withValues(alpha: 0.45),
+                            blurRadius: 36,
+                            offset: const Offset(0, 8),
+                          ),
                         ],
                       ),
+                      child: Center(
+                        child: Text(
+                          widget.tenantSubdomain.isNotEmpty
+                              ? widget.tenantSubdomain[0].toUpperCase()
+                              : 'G',
+                          style: Theme.of(context)
+                              .textTheme
+                              .displaySmall
+                              ?.copyWith(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w800,
+                              ),
+                        ),
+                      ),
+                    ),
+                  ).animate().fadeIn(duration: 500.ms).scale(
+                        begin: const Offset(0.85, 0.85),
+                        curve: Curves.easeOutBack,
+                      ),
+
+                  const SizedBox(height: AppSpacing.lg),
+
+                  // Identificação do gabinete
+                  Text(
+                    widget.tenantSubdomain.toUpperCase(),
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 2,
+                      color: Colors.white.withValues(alpha: 0.6),
+                    ),
+                  ).animate().fadeIn(delay: 100.ms, duration: 400.ms),
+
+                  const SizedBox(height: AppSpacing.xs),
+
+                  const Text(
+                    'Bem-vindo de volta',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.w800,
+                      color: Colors.white,
+                    ),
+                  ).animate().fadeIn(delay: 130.ms, duration: 400.ms),
+
+                  const SizedBox(height: AppSpacing.xs),
+
+                  Text(
+                    'Acesse sua conta para continuar',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 13.5,
+                      color: Colors.white.withValues(alpha: 0.65),
+                    ),
+                  ).animate().fadeIn(delay: 150.ms, duration: 400.ms),
+
+                  const SizedBox(height: AppSpacing.xl),
+
+                  // ── Cartão do formulário ─────────────────────────────────
+                  Container(
+                    padding: const EdgeInsets.all(AppSpacing.lg),
+                    decoration: BoxDecoration(
+                      color: cs.surface,
+                      borderRadius: BorderRadius.circular(20),
                       boxShadow: [
                         BoxShadow(
-                          color: cs.primary.withValues(alpha: 0.3),
+                          color: Colors.black.withValues(alpha: 0.3),
                           blurRadius: 24,
                           offset: const Offset(0, 8),
                         ),
                       ],
                     ),
-                    child: Center(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        AppInputField(
+                          label: 'E-mail',
+                          controller: _emailController,
+                          keyboardType: TextInputType.emailAddress,
+                          textInputAction: TextInputAction.next,
+                          autocorrect: false,
+                          prefixIcon: const Icon(Icons.email_outlined),
+                          validator: (v) {
+                            if (v == null || v.isEmpty) {
+                              return 'Informe seu e-mail';
+                            }
+                            if (!v.contains('@')) return 'E-mail inválido';
+                            return null;
+                          },
+                        ),
+                        const SizedBox(height: AppSpacing.md),
+                        AppInputField(
+                          label: 'Senha',
+                          controller: _passwordController,
+                          obscureText: _obscurePassword,
+                          textInputAction: TextInputAction.done,
+                          prefixIcon: const Icon(Icons.lock_outline_rounded),
+                          suffix: IconButton(
+                            icon: Icon(
+                              _obscurePassword
+                                  ? Icons.visibility_off_outlined
+                                  : Icons.visibility_outlined,
+                            ),
+                            onPressed: () => setState(
+                                () => _obscurePassword = !_obscurePassword),
+                          ),
+                          onFieldSubmitted: (_) => _handleLogin(),
+                          validator: (v) {
+                            if (v == null || v.isEmpty) {
+                              return 'Informe sua senha';
+                            }
+                            if (v.length < 6) return 'Mínimo 6 caracteres';
+                            return null;
+                          },
+                        ),
+                        Align(
+                          alignment: Alignment.centerRight,
+                          child: TextButton(
+                            onPressed: () {
+                              // TODO: implementar recuperação de senha
+                            },
+                            child: const Text('Esqueci minha senha'),
+                          ),
+                        ),
+                        const SizedBox(height: AppSpacing.xs),
+                        PrimaryButton(
+                          label: 'Entrar',
+                          onPressed: _isLoading ? null : _handleLogin,
+                          isLoading: _isLoading,
+                        ),
+                        if (_biometricAvailable && _biometricEnabled) ...[
+                          const SizedBox(height: AppSpacing.md),
+                          _Divider(),
+                          const SizedBox(height: AppSpacing.md),
+                          PrimaryButton(
+                            label: 'Entrar com biometria',
+                            icon: Icons.fingerprint,
+                            variant: PrimaryButtonVariant.secondary,
+                            onPressed:
+                                _isLoading ? null : _handleBiometricLogin,
+                            isLoading: _isLoading,
+                          ),
+                        ],
+                      ],
+                    ),
+                  )
+                      .animate()
+                      .fadeIn(delay: 250.ms, duration: 500.ms)
+                      .slideY(begin: 0.08, end: 0),
+
+                  const SizedBox(height: AppSpacing.lg),
+
+                  Center(
+                    child: GestureDetector(
+                      onTap: _trocarGabinete,
                       child: Text(
-                        widget.tenantSubdomain.isNotEmpty
-                            ? widget.tenantSubdomain[0].toUpperCase()
-                            : 'G',
-                        style: Theme.of(context)
-                            .textTheme
-                            .displaySmall
-                            ?.copyWith(color: Colors.white),
+                        'Trocar gabinete',
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.white.withValues(alpha: 0.7),
+                          decoration: TextDecoration.underline,
+                          decorationColor: Colors.white38,
+                        ),
                       ),
                     ),
-                  ),
-                ).animate().fadeIn(duration: 500.ms).scale(
-                      begin: const Offset(0.85, 0.85),
-                      curve: Curves.easeOutBack,
-                    ),
+                  ).animate().fadeIn(delay: 450.ms, duration: 400.ms),
 
-                const SizedBox(height: AppSpacing.lg),
-
-                // Identificação do gabinete
-                Text(
-                  widget.tenantSubdomain.toUpperCase(),
-                  style: AppTextStyles.eyebrow(context),
-                  textAlign: TextAlign.center,
-                ).animate().fadeIn(delay: 100.ms, duration: 400.ms),
-
-                const SizedBox(height: AppSpacing.xs),
-
-                Text(
-                  'Bem-vindo de volta',
-                  style: Theme.of(context).textTheme.headlineSmall,
-                  textAlign: TextAlign.center,
-                ).animate().fadeIn(delay: 130.ms, duration: 400.ms),
-
-                const SizedBox(height: AppSpacing.xs),
-
-                Text(
-                  'Acesse sua conta para continuar',
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: isDark
-                            ? AppColors.neutral600Dark
-                            : AppColors.neutral600Light,
-                      ),
-                  textAlign: TextAlign.center,
-                ).animate().fadeIn(delay: 150.ms, duration: 400.ms),
-
-                const SizedBox(height: AppSpacing.xxl),
-
-                // Campo e-mail
-                AppInputField(
-                  label: 'E-mail',
-                  controller: _emailController,
-                  keyboardType: TextInputType.emailAddress,
-                  textInputAction: TextInputAction.next,
-                  autocorrect: false,
-                  prefixIcon: const Icon(Icons.email_outlined),
-                  validator: (v) {
-                    if (v == null || v.isEmpty) return 'Informe seu e-mail';
-                    if (!v.contains('@')) return 'E-mail inválido';
-                    return null;
-                  },
-                ).animate().fadeIn(delay: 250.ms, duration: 400.ms).slideY(
-                      begin: 0.08,
-                      end: 0,
-                    ),
-
-                const SizedBox(height: AppSpacing.md),
-
-                // Campo senha
-                AppInputField(
-                  label: 'Senha',
-                  controller: _passwordController,
-                  obscureText: _obscurePassword,
-                  textInputAction: TextInputAction.done,
-                  prefixIcon: const Icon(Icons.lock_outline_rounded),
-                  suffix: IconButton(
-                    icon: Icon(
-                      _obscurePassword
-                          ? Icons.visibility_off_outlined
-                          : Icons.visibility_outlined,
-                    ),
-                    onPressed: () =>
-                        setState(() => _obscurePassword = !_obscurePassword),
-                  ),
-                  onFieldSubmitted: (_) => _handleLogin(),
-                  validator: (v) {
-                    if (v == null || v.isEmpty) return 'Informe sua senha';
-                    if (v.length < 6) return 'Mínimo 6 caracteres';
-                    return null;
-                  },
-                ).animate().fadeIn(delay: 300.ms, duration: 400.ms).slideY(
-                      begin: 0.08,
-                      end: 0,
-                    ),
-
-                // Esqueci a senha
-                Align(
-                  alignment: Alignment.centerRight,
-                  child: TextButton(
-                    onPressed: () {
-                      // TODO: implementar recuperação de senha
-                    },
-                    child: const Text('Esqueci minha senha'),
-                  ),
-                ).animate().fadeIn(delay: 350.ms, duration: 400.ms),
-
-                const SizedBox(height: AppSpacing.md),
-
-                PrimaryButton(
-                  label: 'Entrar',
-                  onPressed: _isLoading ? null : _handleLogin,
-                  isLoading: _isLoading,
-                ).animate().fadeIn(delay: 400.ms, duration: 400.ms),
-
-                // Biometria
-                if (_biometricAvailable && _biometricEnabled) ...[
-                  const SizedBox(height: AppSpacing.lg),
-                  _Divider(),
-                  const SizedBox(height: AppSpacing.lg),
-                  PrimaryButton(
-                    label: 'Entrar com biometria',
-                    icon: Icons.fingerprint,
-                    variant: PrimaryButtonVariant.secondary,
-                    onPressed: _isLoading ? null : _handleBiometricLogin,
-                    isLoading: _isLoading,
-                  ).animate().fadeIn(delay: 500.ms, duration: 400.ms),
+                  SizedBox(
+                      height:
+                          MediaQuery.of(context).viewInsets.bottom + 24),
                 ],
-
-                const SizedBox(height: AppSpacing.xl),
-
-                Center(
-                  child: TextButton(
-                    onPressed: _trocarGabinete,
-                    child: const Text('Trocar gabinete'),
-                  ),
-                ).animate().fadeIn(delay: 600.ms, duration: 400.ms),
-
-                SizedBox(height: MediaQuery.of(context).viewInsets.bottom + 20),
-              ],
+              ),
             ),
           ),
         ),
