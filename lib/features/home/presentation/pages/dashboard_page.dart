@@ -6,7 +6,6 @@ import 'package:go_router/go_router.dart';
 import '../../../../core/auth/permissoes.dart';
 import '../../../../core/theme/design_tokens.dart';
 import '../../../../core/widgets/gradient_action_card.dart';
-import '../../../../core/widgets/kpi_card.dart';
 import '../../../../core/widgets/shimmer_skeleton.dart';
 import '../../../dashboard/data/models/recent_activity_model.dart';
 import '../../../dashboard/presentation/providers/dashboard_provider.dart';
@@ -45,19 +44,15 @@ class DashboardPage extends ConsumerWidget {
                   data: (stats) => _KpiGrid(stats: stats, isWide: isWide),
                 ),
 
-                const SizedBox(height: AppSpacing.lg),
+                const SizedBox(height: AppSpacing.sm),
 
-                // KPI mensagens (full width)
+                // Banner de mensagens (full width, gradiente)
                 statsAsync.maybeWhen(
-                  data: (stats) => KpiCard(
-                    label: 'MENSAGENS',
-                    value: stats.messagesSent.toString(),
-                    trendDelta: '${stats.messagestoday}',
-                    trendLabel: 'hoje',
-                    trendPositive: stats.messagestoday > 0,
-                    icon: Icons.chat_bubble_outline_rounded,
+                  data: (stats) => _MensagensBanner(
+                    total: stats.messagesSent,
+                    hoje: stats.messagestoday,
                   ).animate().fadeIn(delay: 200.ms),
-                  orElse: () => ShimmerSkeleton.card(height: 110),
+                  orElse: () => ShimmerSkeleton.card(height: 84),
                 ),
 
                 const SizedBox(height: AppSpacing.xl),
@@ -192,30 +187,27 @@ class _KpiGrid extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cards = [
-      KpiCard(
-        label: 'DEMANDAS',
+      _StatCard(
+        label: 'Demandas',
         value: stats.totalDemands.toString(),
-        trendDelta: '+${stats.openDemands}',
-        trendLabel: 'abertas',
-        trendPositive: true,
-        icon: Icons.inbox_rounded,
+        detalhe: '+${stats.openDemands} abertas',
+        icone: Icons.inbox_rounded,
+        cor: const Color(0xFFEF6C00),
       ),
-      KpiCard(
-        label: 'MUNÍCIPES',
+      _StatCard(
+        label: 'Munícipes',
         value: _fmt(stats.totalConstituents as int),
-        trendDelta: '+${stats.newConstituentsToday}',
-        trendLabel: 'hoje',
-        trendPositive: true,
-        icon: Icons.people_rounded,
+        detalhe: '+${stats.newConstituentsToday} hoje',
+        icone: Icons.people_rounded,
+        cor: const Color(0xFF1976D2),
       ),
       if (isWide)
-        KpiCard(
-          label: 'EVENTOS',
+        _StatCard(
+          label: 'Eventos',
           value: stats.upcomingEvents.toString(),
-          trendDelta: '${stats.eventsThisWeek}',
-          trendLabel: 'esta semana',
-          trendPositive: true,
-          icon: Icons.calendar_month_rounded,
+          detalhe: '${stats.eventsThisWeek} esta semana',
+          icone: Icons.calendar_month_rounded,
+          cor: const Color(0xFF00897B),
         ),
     ];
 
@@ -225,7 +217,7 @@ class _KpiGrid extends StatelessWidget {
       physics: const NeverScrollableScrollPhysics(),
       mainAxisSpacing: AppSpacing.sm,
       crossAxisSpacing: AppSpacing.sm,
-      childAspectRatio: 1.2,
+      childAspectRatio: 1.55,
       children: cards
           .asMap()
           .entries
@@ -236,6 +228,168 @@ class _KpiGrid extends StatelessWidget {
                 .slideY(begin: 0.08, end: 0),
           )
           .toList(),
+    );
+  }
+}
+
+/// Cartão de estatística no padrão novo: pastilha de ícone colorida,
+/// número em destaque e detalhe curto.
+class _StatCard extends StatelessWidget {
+  const _StatCard({
+    required this.label,
+    required this.value,
+    required this.detalhe,
+    required this.icone,
+    required this.cor,
+  });
+
+  final String label;
+  final String value;
+  final String detalhe;
+  final IconData icone;
+  final Color cor;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: cs.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: cor.withValues(alpha: 0.25)),
+        boxShadow: [
+          BoxShadow(
+            color: cor.withValues(alpha: 0.08),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: cor.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(9),
+                ),
+                child: Icon(icone, size: 16, color: cor),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 11.5,
+                    fontWeight: FontWeight.w700,
+                    color: cs.onSurfaceVariant,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const Spacer(),
+          Text(
+            value,
+            style: const TextStyle(
+              fontSize: 24,
+              fontWeight: FontWeight.w800,
+              height: 1.0,
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            detalhe,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(fontSize: 10.5, color: cor,
+                fontWeight: FontWeight.w700),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Banner de mensagens: destaque em gradiente escuro, número grande.
+class _MensagensBanner extends StatelessWidget {
+  const _MensagensBanner({required this.total, required this.hoje});
+
+  final int total;
+  final int hoje;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          begin: Alignment.centerLeft,
+          end: Alignment.centerRight,
+          colors: [Color(0xFF16213E), Color(0xFF128C7E)],
+        ),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(9),
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: const Icon(Icons.chat_rounded,
+                color: Colors.white, size: 22),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Mensagens enviadas',
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.white.withValues(alpha: 0.75),
+                  ),
+                ),
+                Text(
+                  '$total',
+                  style: const TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.w800,
+                    color: Colors.white,
+                    height: 1.1,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Container(
+            padding:
+                const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.18),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Text(
+              '+$hoje hoje',
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 12,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
