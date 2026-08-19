@@ -113,7 +113,11 @@ class _TenantSetupPageState extends ConsumerState<TenantSetupPage> {
     final cs = Theme.of(context).colorScheme;
 
     return Scaffold(
+      // Fundo escuro tambem no Scaffold (evita faixa branca com teclado
+      // aberto ou conteudo curto).
+      backgroundColor: const Color(0xFF0B0F17),
       body: Container(
+        constraints: const BoxConstraints.expand(),
         decoration: const BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
