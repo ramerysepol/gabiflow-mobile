@@ -46,13 +46,15 @@ class DashboardPage extends ConsumerWidget {
 
                 const SizedBox(height: AppSpacing.sm),
 
-                // Banner de mensagens (full width, gradiente)
+                // Painel de atendimentos (full width, gradiente)
                 statsAsync.maybeWhen(
-                  data: (stats) => _MensagensBanner(
-                    total: stats.messagesSent,
-                    hoje: stats.messagestoday,
+                  data: (stats) => _AtendimentosCard(
+                    recebidos: stats.atendimentosRecebidosHoje,
+                    atendidos: stats.atendimentosAtendidosHoje,
+                    aguardando: stats.atendimentosAguardando,
+                    arquivados: stats.atendimentosArquivadosHoje,
                   ).animate().fadeIn(delay: 200.ms),
-                  orElse: () => ShimmerSkeleton.card(height: 84),
+                  orElse: () => ShimmerSkeleton.card(height: 110),
                 ),
 
                 const SizedBox(height: AppSpacing.xl),
@@ -317,75 +319,132 @@ class _StatCard extends StatelessWidget {
   }
 }
 
-/// Banner de mensagens: destaque em gradiente escuro, número grande.
-class _MensagensBanner extends StatelessWidget {
-  const _MensagensBanner({required this.total, required this.hoje});
+/// Painel de atendimentos do dia: recebidos, atendidos, aguardando e
+/// arquivados — direto da central. Toca → abre a central.
+class _AtendimentosCard extends StatelessWidget {
+  const _AtendimentosCard({
+    required this.recebidos,
+    required this.atendidos,
+    required this.aguardando,
+    required this.arquivados,
+  });
 
-  final int total;
-  final int hoje;
+  final int recebidos;
+  final int atendidos;
+  final int aguardando;
+  final int arquivados;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          begin: Alignment.centerLeft,
-          end: Alignment.centerRight,
-          colors: [Color(0xFF16213E), Color(0xFF128C7E)],
-        ),
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: () => context.go('/home/atendimento'),
         borderRadius: BorderRadius.circular(16),
-      ),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(9),
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.15),
-              borderRadius: BorderRadius.circular(12),
+        child: Container(
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 14),
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(
+              begin: Alignment.centerLeft,
+              end: Alignment.centerRight,
+              colors: [Color(0xFF16213E), Color(0xFF128C7E)],
             ),
-            child: const Icon(Icons.chat_rounded,
-                color: Colors.white, size: 22),
+            borderRadius: BorderRadius.circular(16),
           ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Mensagens enviadas',
-                  style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w700,
-                    color: Colors.white.withValues(alpha: 0.75),
+          child: Column(
+            children: [
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(7),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: const Icon(Icons.support_agent_rounded,
+                        color: Colors.white, size: 18),
                   ),
-                ),
-                Text(
-                  '$total',
-                  style: const TextStyle(
-                    fontSize: 22,
-                    fontWeight: FontWeight.w800,
-                    color: Colors.white,
-                    height: 1.1,
+                  const SizedBox(width: 10),
+                  const Expanded(
+                    child: Text(
+                      'Atendimentos hoje',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 13.5,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
                   ),
-                ),
-              ],
-            ),
-          ),
-          Container(
-            padding:
-                const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.18),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Text(
-              '+$hoje hoje',
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 12,
-                fontWeight: FontWeight.w800,
+                  Icon(Icons.chevron_right_rounded,
+                      color: Colors.white.withValues(alpha: 0.7), size: 20),
+                ],
               ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  _MiniStat(valor: recebidos, rotulo: 'Recebidos'),
+                  _divisor(),
+                  _MiniStat(valor: atendidos, rotulo: 'Atendidos'),
+                  _divisor(),
+                  _MiniStat(
+                    valor: aguardando,
+                    rotulo: 'Aguardando',
+                    destaque: aguardando > 0,
+                  ),
+                  _divisor(),
+                  _MiniStat(valor: arquivados, rotulo: 'Arquivados'),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _divisor() => Container(
+        width: 1,
+        height: 28,
+        color: Colors.white.withValues(alpha: 0.15),
+      );
+}
+
+class _MiniStat extends StatelessWidget {
+  const _MiniStat({
+    required this.valor,
+    required this.rotulo,
+    this.destaque = false,
+  });
+
+  final int valor;
+  final String rotulo;
+  final bool destaque;
+
+  @override
+  Widget build(BuildContext context) {
+    final cor = destaque ? const Color(0xFFFFD54F) : Colors.white;
+    return Expanded(
+      child: Column(
+        children: [
+          Text(
+            '$valor',
+            style: TextStyle(
+              color: cor,
+              fontSize: 20,
+              fontWeight: FontWeight.w800,
+              height: 1.1,
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            rotulo,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              color: (destaque ? cor : Colors.white)
+                  .withValues(alpha: destaque ? 0.95 : 0.7),
+              fontSize: 10,
+              fontWeight: FontWeight.w700,
             ),
           ),
         ],

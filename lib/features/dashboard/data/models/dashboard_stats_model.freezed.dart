@@ -15,7 +15,7 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$DashboardStatsModel {
 
- int get totalConstituents; int get newConstituentsToday; int get totalDemands; int get openDemands; int get resolvedDemandsToday; int get upcomingEvents; int get eventsThisWeek; int get messagestoday; int get messagesSent; List<RecentActivityModel> get recentActivities;
+ int get totalConstituents; int get newConstituentsToday; int get totalDemands; int get openDemands; int get resolvedDemandsToday; int get upcomingEvents; int get eventsThisWeek; int get messagestoday; int get messagesSent; int get atendimentosRecebidosHoje; int get atendimentosAguardando; int get atendimentosEmAtendimento; int get atendimentosAtendidosHoje; int get atendimentosArquivadosHoje; List<RecentActivityModel> get recentActivities;
 /// Create a copy of DashboardStatsModel
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -28,16 +28,16 @@ $DashboardStatsModelCopyWith<DashboardStatsModel> get copyWith => _$DashboardSta
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is DashboardStatsModel&&(identical(other.totalConstituents, totalConstituents) || other.totalConstituents == totalConstituents)&&(identical(other.newConstituentsToday, newConstituentsToday) || other.newConstituentsToday == newConstituentsToday)&&(identical(other.totalDemands, totalDemands) || other.totalDemands == totalDemands)&&(identical(other.openDemands, openDemands) || other.openDemands == openDemands)&&(identical(other.resolvedDemandsToday, resolvedDemandsToday) || other.resolvedDemandsToday == resolvedDemandsToday)&&(identical(other.upcomingEvents, upcomingEvents) || other.upcomingEvents == upcomingEvents)&&(identical(other.eventsThisWeek, eventsThisWeek) || other.eventsThisWeek == eventsThisWeek)&&(identical(other.messagestoday, messagestoday) || other.messagestoday == messagestoday)&&(identical(other.messagesSent, messagesSent) || other.messagesSent == messagesSent)&&const DeepCollectionEquality().equals(other.recentActivities, recentActivities));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is DashboardStatsModel&&(identical(other.totalConstituents, totalConstituents) || other.totalConstituents == totalConstituents)&&(identical(other.newConstituentsToday, newConstituentsToday) || other.newConstituentsToday == newConstituentsToday)&&(identical(other.totalDemands, totalDemands) || other.totalDemands == totalDemands)&&(identical(other.openDemands, openDemands) || other.openDemands == openDemands)&&(identical(other.resolvedDemandsToday, resolvedDemandsToday) || other.resolvedDemandsToday == resolvedDemandsToday)&&(identical(other.upcomingEvents, upcomingEvents) || other.upcomingEvents == upcomingEvents)&&(identical(other.eventsThisWeek, eventsThisWeek) || other.eventsThisWeek == eventsThisWeek)&&(identical(other.messagestoday, messagestoday) || other.messagestoday == messagestoday)&&(identical(other.messagesSent, messagesSent) || other.messagesSent == messagesSent)&&(identical(other.atendimentosRecebidosHoje, atendimentosRecebidosHoje) || other.atendimentosRecebidosHoje == atendimentosRecebidosHoje)&&(identical(other.atendimentosAguardando, atendimentosAguardando) || other.atendimentosAguardando == atendimentosAguardando)&&(identical(other.atendimentosEmAtendimento, atendimentosEmAtendimento) || other.atendimentosEmAtendimento == atendimentosEmAtendimento)&&(identical(other.atendimentosAtendidosHoje, atendimentosAtendidosHoje) || other.atendimentosAtendidosHoje == atendimentosAtendidosHoje)&&(identical(other.atendimentosArquivadosHoje, atendimentosArquivadosHoje) || other.atendimentosArquivadosHoje == atendimentosArquivadosHoje)&&const DeepCollectionEquality().equals(other.recentActivities, recentActivities));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,totalConstituents,newConstituentsToday,totalDemands,openDemands,resolvedDemandsToday,upcomingEvents,eventsThisWeek,messagestoday,messagesSent,const DeepCollectionEquality().hash(recentActivities));
+int get hashCode => Object.hash(runtimeType,totalConstituents,newConstituentsToday,totalDemands,openDemands,resolvedDemandsToday,upcomingEvents,eventsThisWeek,messagestoday,messagesSent,atendimentosRecebidosHoje,atendimentosAguardando,atendimentosEmAtendimento,atendimentosAtendidosHoje,atendimentosArquivadosHoje,const DeepCollectionEquality().hash(recentActivities));
 
 @override
 String toString() {
-  return 'DashboardStatsModel(totalConstituents: $totalConstituents, newConstituentsToday: $newConstituentsToday, totalDemands: $totalDemands, openDemands: $openDemands, resolvedDemandsToday: $resolvedDemandsToday, upcomingEvents: $upcomingEvents, eventsThisWeek: $eventsThisWeek, messagestoday: $messagestoday, messagesSent: $messagesSent, recentActivities: $recentActivities)';
+  return 'DashboardStatsModel(totalConstituents: $totalConstituents, newConstituentsToday: $newConstituentsToday, totalDemands: $totalDemands, openDemands: $openDemands, resolvedDemandsToday: $resolvedDemandsToday, upcomingEvents: $upcomingEvents, eventsThisWeek: $eventsThisWeek, messagestoday: $messagestoday, messagesSent: $messagesSent, atendimentosRecebidosHoje: $atendimentosRecebidosHoje, atendimentosAguardando: $atendimentosAguardando, atendimentosEmAtendimento: $atendimentosEmAtendimento, atendimentosAtendidosHoje: $atendimentosAtendidosHoje, atendimentosArquivadosHoje: $atendimentosArquivadosHoje, recentActivities: $recentActivities)';
 }
 
 
@@ -48,7 +48,7 @@ abstract mixin class $DashboardStatsModelCopyWith<$Res>  {
   factory $DashboardStatsModelCopyWith(DashboardStatsModel value, $Res Function(DashboardStatsModel) _then) = _$DashboardStatsModelCopyWithImpl;
 @useResult
 $Res call({
- int totalConstituents, int newConstituentsToday, int totalDemands, int openDemands, int resolvedDemandsToday, int upcomingEvents, int eventsThisWeek, int messagestoday, int messagesSent, List<RecentActivityModel> recentActivities
+ int totalConstituents, int newConstituentsToday, int totalDemands, int openDemands, int resolvedDemandsToday, int upcomingEvents, int eventsThisWeek, int messagestoday, int messagesSent, int atendimentosRecebidosHoje, int atendimentosAguardando, int atendimentosEmAtendimento, int atendimentosAtendidosHoje, int atendimentosArquivadosHoje, List<RecentActivityModel> recentActivities
 });
 
 
@@ -65,7 +65,7 @@ class _$DashboardStatsModelCopyWithImpl<$Res>
 
 /// Create a copy of DashboardStatsModel
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? totalConstituents = null,Object? newConstituentsToday = null,Object? totalDemands = null,Object? openDemands = null,Object? resolvedDemandsToday = null,Object? upcomingEvents = null,Object? eventsThisWeek = null,Object? messagestoday = null,Object? messagesSent = null,Object? recentActivities = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? totalConstituents = null,Object? newConstituentsToday = null,Object? totalDemands = null,Object? openDemands = null,Object? resolvedDemandsToday = null,Object? upcomingEvents = null,Object? eventsThisWeek = null,Object? messagestoday = null,Object? messagesSent = null,Object? atendimentosRecebidosHoje = null,Object? atendimentosAguardando = null,Object? atendimentosEmAtendimento = null,Object? atendimentosAtendidosHoje = null,Object? atendimentosArquivadosHoje = null,Object? recentActivities = null,}) {
   return _then(_self.copyWith(
 totalConstituents: null == totalConstituents ? _self.totalConstituents : totalConstituents // ignore: cast_nullable_to_non_nullable
 as int,newConstituentsToday: null == newConstituentsToday ? _self.newConstituentsToday : newConstituentsToday // ignore: cast_nullable_to_non_nullable
@@ -76,6 +76,11 @@ as int,upcomingEvents: null == upcomingEvents ? _self.upcomingEvents : upcomingE
 as int,eventsThisWeek: null == eventsThisWeek ? _self.eventsThisWeek : eventsThisWeek // ignore: cast_nullable_to_non_nullable
 as int,messagestoday: null == messagestoday ? _self.messagestoday : messagestoday // ignore: cast_nullable_to_non_nullable
 as int,messagesSent: null == messagesSent ? _self.messagesSent : messagesSent // ignore: cast_nullable_to_non_nullable
+as int,atendimentosRecebidosHoje: null == atendimentosRecebidosHoje ? _self.atendimentosRecebidosHoje : atendimentosRecebidosHoje // ignore: cast_nullable_to_non_nullable
+as int,atendimentosAguardando: null == atendimentosAguardando ? _self.atendimentosAguardando : atendimentosAguardando // ignore: cast_nullable_to_non_nullable
+as int,atendimentosEmAtendimento: null == atendimentosEmAtendimento ? _self.atendimentosEmAtendimento : atendimentosEmAtendimento // ignore: cast_nullable_to_non_nullable
+as int,atendimentosAtendidosHoje: null == atendimentosAtendidosHoje ? _self.atendimentosAtendidosHoje : atendimentosAtendidosHoje // ignore: cast_nullable_to_non_nullable
+as int,atendimentosArquivadosHoje: null == atendimentosArquivadosHoje ? _self.atendimentosArquivadosHoje : atendimentosArquivadosHoje // ignore: cast_nullable_to_non_nullable
 as int,recentActivities: null == recentActivities ? _self.recentActivities : recentActivities // ignore: cast_nullable_to_non_nullable
 as List<RecentActivityModel>,
   ));
@@ -162,10 +167,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( int totalConstituents,  int newConstituentsToday,  int totalDemands,  int openDemands,  int resolvedDemandsToday,  int upcomingEvents,  int eventsThisWeek,  int messagestoday,  int messagesSent,  List<RecentActivityModel> recentActivities)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( int totalConstituents,  int newConstituentsToday,  int totalDemands,  int openDemands,  int resolvedDemandsToday,  int upcomingEvents,  int eventsThisWeek,  int messagestoday,  int messagesSent,  int atendimentosRecebidosHoje,  int atendimentosAguardando,  int atendimentosEmAtendimento,  int atendimentosAtendidosHoje,  int atendimentosArquivadosHoje,  List<RecentActivityModel> recentActivities)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _DashboardStatsModel() when $default != null:
-return $default(_that.totalConstituents,_that.newConstituentsToday,_that.totalDemands,_that.openDemands,_that.resolvedDemandsToday,_that.upcomingEvents,_that.eventsThisWeek,_that.messagestoday,_that.messagesSent,_that.recentActivities);case _:
+return $default(_that.totalConstituents,_that.newConstituentsToday,_that.totalDemands,_that.openDemands,_that.resolvedDemandsToday,_that.upcomingEvents,_that.eventsThisWeek,_that.messagestoday,_that.messagesSent,_that.atendimentosRecebidosHoje,_that.atendimentosAguardando,_that.atendimentosEmAtendimento,_that.atendimentosAtendidosHoje,_that.atendimentosArquivadosHoje,_that.recentActivities);case _:
   return orElse();
 
 }
@@ -183,10 +188,10 @@ return $default(_that.totalConstituents,_that.newConstituentsToday,_that.totalDe
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( int totalConstituents,  int newConstituentsToday,  int totalDemands,  int openDemands,  int resolvedDemandsToday,  int upcomingEvents,  int eventsThisWeek,  int messagestoday,  int messagesSent,  List<RecentActivityModel> recentActivities)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( int totalConstituents,  int newConstituentsToday,  int totalDemands,  int openDemands,  int resolvedDemandsToday,  int upcomingEvents,  int eventsThisWeek,  int messagestoday,  int messagesSent,  int atendimentosRecebidosHoje,  int atendimentosAguardando,  int atendimentosEmAtendimento,  int atendimentosAtendidosHoje,  int atendimentosArquivadosHoje,  List<RecentActivityModel> recentActivities)  $default,) {final _that = this;
 switch (_that) {
 case _DashboardStatsModel():
-return $default(_that.totalConstituents,_that.newConstituentsToday,_that.totalDemands,_that.openDemands,_that.resolvedDemandsToday,_that.upcomingEvents,_that.eventsThisWeek,_that.messagestoday,_that.messagesSent,_that.recentActivities);case _:
+return $default(_that.totalConstituents,_that.newConstituentsToday,_that.totalDemands,_that.openDemands,_that.resolvedDemandsToday,_that.upcomingEvents,_that.eventsThisWeek,_that.messagestoday,_that.messagesSent,_that.atendimentosRecebidosHoje,_that.atendimentosAguardando,_that.atendimentosEmAtendimento,_that.atendimentosAtendidosHoje,_that.atendimentosArquivadosHoje,_that.recentActivities);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -203,10 +208,10 @@ return $default(_that.totalConstituents,_that.newConstituentsToday,_that.totalDe
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( int totalConstituents,  int newConstituentsToday,  int totalDemands,  int openDemands,  int resolvedDemandsToday,  int upcomingEvents,  int eventsThisWeek,  int messagestoday,  int messagesSent,  List<RecentActivityModel> recentActivities)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( int totalConstituents,  int newConstituentsToday,  int totalDemands,  int openDemands,  int resolvedDemandsToday,  int upcomingEvents,  int eventsThisWeek,  int messagestoday,  int messagesSent,  int atendimentosRecebidosHoje,  int atendimentosAguardando,  int atendimentosEmAtendimento,  int atendimentosAtendidosHoje,  int atendimentosArquivadosHoje,  List<RecentActivityModel> recentActivities)?  $default,) {final _that = this;
 switch (_that) {
 case _DashboardStatsModel() when $default != null:
-return $default(_that.totalConstituents,_that.newConstituentsToday,_that.totalDemands,_that.openDemands,_that.resolvedDemandsToday,_that.upcomingEvents,_that.eventsThisWeek,_that.messagestoday,_that.messagesSent,_that.recentActivities);case _:
+return $default(_that.totalConstituents,_that.newConstituentsToday,_that.totalDemands,_that.openDemands,_that.resolvedDemandsToday,_that.upcomingEvents,_that.eventsThisWeek,_that.messagestoday,_that.messagesSent,_that.atendimentosRecebidosHoje,_that.atendimentosAguardando,_that.atendimentosEmAtendimento,_that.atendimentosAtendidosHoje,_that.atendimentosArquivadosHoje,_that.recentActivities);case _:
   return null;
 
 }
@@ -218,7 +223,7 @@ return $default(_that.totalConstituents,_that.newConstituentsToday,_that.totalDe
 @JsonSerializable()
 
 class _DashboardStatsModel implements DashboardStatsModel {
-  const _DashboardStatsModel({required this.totalConstituents, required this.newConstituentsToday, required this.totalDemands, required this.openDemands, required this.resolvedDemandsToday, required this.upcomingEvents, required this.eventsThisWeek, required this.messagestoday, required this.messagesSent, final  List<RecentActivityModel> recentActivities = const []}): _recentActivities = recentActivities;
+  const _DashboardStatsModel({required this.totalConstituents, required this.newConstituentsToday, required this.totalDemands, required this.openDemands, required this.resolvedDemandsToday, required this.upcomingEvents, required this.eventsThisWeek, required this.messagestoday, required this.messagesSent, this.atendimentosRecebidosHoje = 0, this.atendimentosAguardando = 0, this.atendimentosEmAtendimento = 0, this.atendimentosAtendidosHoje = 0, this.atendimentosArquivadosHoje = 0, final  List<RecentActivityModel> recentActivities = const []}): _recentActivities = recentActivities;
   factory _DashboardStatsModel.fromJson(Map<String, dynamic> json) => _$DashboardStatsModelFromJson(json);
 
 @override final  int totalConstituents;
@@ -230,6 +235,11 @@ class _DashboardStatsModel implements DashboardStatsModel {
 @override final  int eventsThisWeek;
 @override final  int messagestoday;
 @override final  int messagesSent;
+@override@JsonKey() final  int atendimentosRecebidosHoje;
+@override@JsonKey() final  int atendimentosAguardando;
+@override@JsonKey() final  int atendimentosEmAtendimento;
+@override@JsonKey() final  int atendimentosAtendidosHoje;
+@override@JsonKey() final  int atendimentosArquivadosHoje;
  final  List<RecentActivityModel> _recentActivities;
 @override@JsonKey() List<RecentActivityModel> get recentActivities {
   if (_recentActivities is EqualUnmodifiableListView) return _recentActivities;
@@ -251,16 +261,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _DashboardStatsModel&&(identical(other.totalConstituents, totalConstituents) || other.totalConstituents == totalConstituents)&&(identical(other.newConstituentsToday, newConstituentsToday) || other.newConstituentsToday == newConstituentsToday)&&(identical(other.totalDemands, totalDemands) || other.totalDemands == totalDemands)&&(identical(other.openDemands, openDemands) || other.openDemands == openDemands)&&(identical(other.resolvedDemandsToday, resolvedDemandsToday) || other.resolvedDemandsToday == resolvedDemandsToday)&&(identical(other.upcomingEvents, upcomingEvents) || other.upcomingEvents == upcomingEvents)&&(identical(other.eventsThisWeek, eventsThisWeek) || other.eventsThisWeek == eventsThisWeek)&&(identical(other.messagestoday, messagestoday) || other.messagestoday == messagestoday)&&(identical(other.messagesSent, messagesSent) || other.messagesSent == messagesSent)&&const DeepCollectionEquality().equals(other._recentActivities, _recentActivities));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _DashboardStatsModel&&(identical(other.totalConstituents, totalConstituents) || other.totalConstituents == totalConstituents)&&(identical(other.newConstituentsToday, newConstituentsToday) || other.newConstituentsToday == newConstituentsToday)&&(identical(other.totalDemands, totalDemands) || other.totalDemands == totalDemands)&&(identical(other.openDemands, openDemands) || other.openDemands == openDemands)&&(identical(other.resolvedDemandsToday, resolvedDemandsToday) || other.resolvedDemandsToday == resolvedDemandsToday)&&(identical(other.upcomingEvents, upcomingEvents) || other.upcomingEvents == upcomingEvents)&&(identical(other.eventsThisWeek, eventsThisWeek) || other.eventsThisWeek == eventsThisWeek)&&(identical(other.messagestoday, messagestoday) || other.messagestoday == messagestoday)&&(identical(other.messagesSent, messagesSent) || other.messagesSent == messagesSent)&&(identical(other.atendimentosRecebidosHoje, atendimentosRecebidosHoje) || other.atendimentosRecebidosHoje == atendimentosRecebidosHoje)&&(identical(other.atendimentosAguardando, atendimentosAguardando) || other.atendimentosAguardando == atendimentosAguardando)&&(identical(other.atendimentosEmAtendimento, atendimentosEmAtendimento) || other.atendimentosEmAtendimento == atendimentosEmAtendimento)&&(identical(other.atendimentosAtendidosHoje, atendimentosAtendidosHoje) || other.atendimentosAtendidosHoje == atendimentosAtendidosHoje)&&(identical(other.atendimentosArquivadosHoje, atendimentosArquivadosHoje) || other.atendimentosArquivadosHoje == atendimentosArquivadosHoje)&&const DeepCollectionEquality().equals(other._recentActivities, _recentActivities));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,totalConstituents,newConstituentsToday,totalDemands,openDemands,resolvedDemandsToday,upcomingEvents,eventsThisWeek,messagestoday,messagesSent,const DeepCollectionEquality().hash(_recentActivities));
+int get hashCode => Object.hash(runtimeType,totalConstituents,newConstituentsToday,totalDemands,openDemands,resolvedDemandsToday,upcomingEvents,eventsThisWeek,messagestoday,messagesSent,atendimentosRecebidosHoje,atendimentosAguardando,atendimentosEmAtendimento,atendimentosAtendidosHoje,atendimentosArquivadosHoje,const DeepCollectionEquality().hash(_recentActivities));
 
 @override
 String toString() {
-  return 'DashboardStatsModel(totalConstituents: $totalConstituents, newConstituentsToday: $newConstituentsToday, totalDemands: $totalDemands, openDemands: $openDemands, resolvedDemandsToday: $resolvedDemandsToday, upcomingEvents: $upcomingEvents, eventsThisWeek: $eventsThisWeek, messagestoday: $messagestoday, messagesSent: $messagesSent, recentActivities: $recentActivities)';
+  return 'DashboardStatsModel(totalConstituents: $totalConstituents, newConstituentsToday: $newConstituentsToday, totalDemands: $totalDemands, openDemands: $openDemands, resolvedDemandsToday: $resolvedDemandsToday, upcomingEvents: $upcomingEvents, eventsThisWeek: $eventsThisWeek, messagestoday: $messagestoday, messagesSent: $messagesSent, atendimentosRecebidosHoje: $atendimentosRecebidosHoje, atendimentosAguardando: $atendimentosAguardando, atendimentosEmAtendimento: $atendimentosEmAtendimento, atendimentosAtendidosHoje: $atendimentosAtendidosHoje, atendimentosArquivadosHoje: $atendimentosArquivadosHoje, recentActivities: $recentActivities)';
 }
 
 
@@ -271,7 +281,7 @@ abstract mixin class _$DashboardStatsModelCopyWith<$Res> implements $DashboardSt
   factory _$DashboardStatsModelCopyWith(_DashboardStatsModel value, $Res Function(_DashboardStatsModel) _then) = __$DashboardStatsModelCopyWithImpl;
 @override @useResult
 $Res call({
- int totalConstituents, int newConstituentsToday, int totalDemands, int openDemands, int resolvedDemandsToday, int upcomingEvents, int eventsThisWeek, int messagestoday, int messagesSent, List<RecentActivityModel> recentActivities
+ int totalConstituents, int newConstituentsToday, int totalDemands, int openDemands, int resolvedDemandsToday, int upcomingEvents, int eventsThisWeek, int messagestoday, int messagesSent, int atendimentosRecebidosHoje, int atendimentosAguardando, int atendimentosEmAtendimento, int atendimentosAtendidosHoje, int atendimentosArquivadosHoje, List<RecentActivityModel> recentActivities
 });
 
 
@@ -288,7 +298,7 @@ class __$DashboardStatsModelCopyWithImpl<$Res>
 
 /// Create a copy of DashboardStatsModel
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? totalConstituents = null,Object? newConstituentsToday = null,Object? totalDemands = null,Object? openDemands = null,Object? resolvedDemandsToday = null,Object? upcomingEvents = null,Object? eventsThisWeek = null,Object? messagestoday = null,Object? messagesSent = null,Object? recentActivities = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? totalConstituents = null,Object? newConstituentsToday = null,Object? totalDemands = null,Object? openDemands = null,Object? resolvedDemandsToday = null,Object? upcomingEvents = null,Object? eventsThisWeek = null,Object? messagestoday = null,Object? messagesSent = null,Object? atendimentosRecebidosHoje = null,Object? atendimentosAguardando = null,Object? atendimentosEmAtendimento = null,Object? atendimentosAtendidosHoje = null,Object? atendimentosArquivadosHoje = null,Object? recentActivities = null,}) {
   return _then(_DashboardStatsModel(
 totalConstituents: null == totalConstituents ? _self.totalConstituents : totalConstituents // ignore: cast_nullable_to_non_nullable
 as int,newConstituentsToday: null == newConstituentsToday ? _self.newConstituentsToday : newConstituentsToday // ignore: cast_nullable_to_non_nullable
@@ -299,6 +309,11 @@ as int,upcomingEvents: null == upcomingEvents ? _self.upcomingEvents : upcomingE
 as int,eventsThisWeek: null == eventsThisWeek ? _self.eventsThisWeek : eventsThisWeek // ignore: cast_nullable_to_non_nullable
 as int,messagestoday: null == messagestoday ? _self.messagestoday : messagestoday // ignore: cast_nullable_to_non_nullable
 as int,messagesSent: null == messagesSent ? _self.messagesSent : messagesSent // ignore: cast_nullable_to_non_nullable
+as int,atendimentosRecebidosHoje: null == atendimentosRecebidosHoje ? _self.atendimentosRecebidosHoje : atendimentosRecebidosHoje // ignore: cast_nullable_to_non_nullable
+as int,atendimentosAguardando: null == atendimentosAguardando ? _self.atendimentosAguardando : atendimentosAguardando // ignore: cast_nullable_to_non_nullable
+as int,atendimentosEmAtendimento: null == atendimentosEmAtendimento ? _self.atendimentosEmAtendimento : atendimentosEmAtendimento // ignore: cast_nullable_to_non_nullable
+as int,atendimentosAtendidosHoje: null == atendimentosAtendidosHoje ? _self.atendimentosAtendidosHoje : atendimentosAtendidosHoje // ignore: cast_nullable_to_non_nullable
+as int,atendimentosArquivadosHoje: null == atendimentosArquivadosHoje ? _self.atendimentosArquivadosHoje : atendimentosArquivadosHoje // ignore: cast_nullable_to_non_nullable
 as int,recentActivities: null == recentActivities ? _self._recentActivities : recentActivities // ignore: cast_nullable_to_non_nullable
 as List<RecentActivityModel>,
   ));

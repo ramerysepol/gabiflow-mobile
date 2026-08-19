@@ -17,6 +17,16 @@ _DashboardStatsModel _$DashboardStatsModelFromJson(Map<String, dynamic> json) =>
       eventsThisWeek: (json['eventsThisWeek'] as num).toInt(),
       messagestoday: (json['messagestoday'] as num).toInt(),
       messagesSent: (json['messagesSent'] as num).toInt(),
+      atendimentosRecebidosHoje:
+          (json['atendimentosRecebidosHoje'] as num?)?.toInt() ?? 0,
+      atendimentosAguardando:
+          (json['atendimentosAguardando'] as num?)?.toInt() ?? 0,
+      atendimentosEmAtendimento:
+          (json['atendimentosEmAtendimento'] as num?)?.toInt() ?? 0,
+      atendimentosAtendidosHoje:
+          (json['atendimentosAtendidosHoje'] as num?)?.toInt() ?? 0,
+      atendimentosArquivadosHoje:
+          (json['atendimentosArquivadosHoje'] as num?)?.toInt() ?? 0,
       recentActivities:
           (json['recentActivities'] as List<dynamic>?)
               ?.map(
@@ -38,5 +48,10 @@ Map<String, dynamic> _$DashboardStatsModelToJson(
   'eventsThisWeek': instance.eventsThisWeek,
   'messagestoday': instance.messagestoday,
   'messagesSent': instance.messagesSent,
+  'atendimentosRecebidosHoje': instance.atendimentosRecebidosHoje,
+  'atendimentosAguardando': instance.atendimentosAguardando,
+  'atendimentosEmAtendimento': instance.atendimentosEmAtendimento,
+  'atendimentosAtendidosHoje': instance.atendimentosAtendidosHoje,
+  'atendimentosArquivadosHoje': instance.atendimentosArquivadosHoje,
   'recentActivities': instance.recentActivities,
 };

@@ -16,6 +16,11 @@ abstract class DashboardStatsModel with _$DashboardStatsModel {
     required int eventsThisWeek,
     required int messagestoday,
     required int messagesSent,
+    @Default(0) int atendimentosRecebidosHoje,
+    @Default(0) int atendimentosAguardando,
+    @Default(0) int atendimentosEmAtendimento,
+    @Default(0) int atendimentosAtendidosHoje,
+    @Default(0) int atendimentosArquivadosHoje,
     @Default([]) List<RecentActivityModel> recentActivities,
   }) = _DashboardStatsModel;
 

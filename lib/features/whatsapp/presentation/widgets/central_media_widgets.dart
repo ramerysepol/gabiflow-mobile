@@ -8,6 +8,7 @@ import 'dart:io';
 import 'package:chewie/chewie.dart';
 import 'package:flutter/material.dart';
 import 'package:just_audio/just_audio.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:video_player/video_player.dart';
 
@@ -19,10 +20,41 @@ class _AudioCentral {
   static final AudioPlayer player = AudioPlayer();
   static final ValueNotifier<String?> urlAtual = ValueNotifier<String?>(null);
 
-  /// URLs ja ouvidas ate o fim nesta sessao — ficam 100% azuis (WhatsApp).
+  /// URLs ja ouvidas ate o fim — ficam 100% azuis (WhatsApp).
+  /// Persistido em SharedPreferences pra sobreviver a sair/voltar do chat
+  /// e a reinicios do app.
   static final Set<String> ouvidos = <String>{};
   static final ValueNotifier<int> ouvidosVersao = ValueNotifier<int>(0);
   static bool _listenerPronto = false;
+
+  static const _chaveOuvidos = 'central_audios_ouvidos';
+  static bool _ouvidosCarregados = false;
+
+  /// Carrega do disco na primeira bolha de audio renderizada.
+  static Future<void> carregarOuvidos() async {
+    if (_ouvidosCarregados) return;
+    _ouvidosCarregados = true;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final salvos = prefs.getStringList(_chaveOuvidos) ?? const [];
+      if (salvos.isNotEmpty) {
+        ouvidos.addAll(salvos);
+        ouvidosVersao.value++;
+      }
+    } catch (_) {
+      // Sem persistencia disponivel — segue so com o estado em memoria.
+    }
+  }
+
+  static Future<void> _salvarOuvidos() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      // Mantem no maximo 500 audios pra lista nao crescer sem limite.
+      var lista = ouvidos.toList();
+      if (lista.length > 500) lista = lista.sublist(lista.length - 500);
+      await prefs.setStringList(_chaveOuvidos, lista);
+    } catch (_) {}
+  }
 
   static void _garantirListener() {
     if (_listenerPronto) return;
@@ -32,6 +64,7 @@ class _AudioCentral {
       if (s == ProcessingState.completed && url != null &&
           ouvidos.add(url)) {
         ouvidosVersao.value++;
+        _salvarOuvidos();
       }
     });
   }
@@ -361,6 +394,9 @@ class _AudioBolha extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Restaura os "ja ouvidos" do disco (no-op apos a primeira chamada);
+    // quando carregar, ouvidosVersao muda e o builder repinta.
+    _AudioCentral.carregarOuvidos();
     return ListenableBuilder(
       listenable: Listenable.merge(
           [_AudioCentral.urlAtual, _AudioCentral.ouvidosVersao]),
