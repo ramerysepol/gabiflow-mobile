@@ -132,7 +132,12 @@ class ConstituentDetailPage extends ConsumerWidget {
                           icon: Icons.chat_rounded,
                           label: 'WhatsApp',
                           color: const Color(0xFF25D366),
-                          onTap: () => _opcoesWhatsApp(context, c),
+                          onTap: () => _opcoesWhatsApp(
+                            context,
+                            c,
+                            temGabinete: ref.read(temPermissaoProvider(
+                                Permissoes.whatsappCentral)),
+                          ),
                         ),
                       ),
                       const SizedBox(width: AppSpacing.sm),
@@ -325,11 +330,27 @@ class ConstituentDetailPage extends ConsumerWidget {
 
 // ─── WhatsApp: enviar pelo gabinete ou abrir o aplicativo ───────────────────
 
-Future<void> _opcoesWhatsApp(BuildContext context, ConstituentModel c) async {
+Future<void> _opcoesWhatsApp(
+  BuildContext context,
+  ConstituentModel c, {
+  required bool temGabinete,
+}) async {
   final phone = c.whatsapp ?? c.telefone;
   if (phone == null || phone.replaceAll(RegExp(r'\D'), '').isEmpty) {
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('Munícipe sem telefone cadastrado')),
+    );
+    return;
+  }
+
+  // Sem permissão da central não há o que escolher: abre direto o WhatsApp
+  // do aparelho, sem oferecer um caminho que terminaria em "sem permissão".
+  if (!temGabinete) {
+    await _abrirContato(
+      context,
+      phone,
+      (clean) => Uri.parse('https://wa.me/55$clean'),
+      externo: true,
     );
     return;
   }

@@ -444,21 +444,32 @@ class _FiltrosBar extends ConsumerWidget {
               if (novo != null) onChanged(novo);
             },
           ),
-          const SizedBox(width: AppSpacing.sm),
-          // Envio de WhatsApp em massa (respeita filtros ativos)
-          _ChipFiltro(
-            icon: Icons.chat_rounded,
-            label: 'WhatsApp',
-            ativo: false,
-            onTap: () {
-              final estado = ref.read(constituentListProvider);
-              WhatsAppSendSheet.showBulk(
-                context,
-                filtros: estado.filters,
-                search: estado.searchQuery.isEmpty ? null : estado.searchQuery,
-                totalEstimado: estado.total > 0 ? estado.total : null,
-              );
-            },
+          // Envio de WhatsApp em massa (respeita filtros ativos).
+          // Some por completo sem a permissão de disparo.
+          SePodeVer(
+            permissao: Permissoes.whatsappEnvioMassa,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const SizedBox(width: AppSpacing.sm),
+                _ChipFiltro(
+                  icon: Icons.chat_rounded,
+                  label: 'WhatsApp',
+                  ativo: false,
+                  onTap: () {
+                    final estado = ref.read(constituentListProvider);
+                    WhatsAppSendSheet.showBulk(
+                      context,
+                      filtros: estado.filters,
+                      search: estado.searchQuery.isEmpty
+                          ? null
+                          : estado.searchQuery,
+                      totalEstimado: estado.total > 0 ? estado.total : null,
+                    );
+                  },
+                ),
+              ],
+            ),
           ),
           const SizedBox(width: AppSpacing.sm),
           // Aniversariantes de hoje (chip rápido)

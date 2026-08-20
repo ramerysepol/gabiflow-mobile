@@ -1,3 +1,4 @@
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -378,11 +379,27 @@ class _WhatsAppSendSheetState extends ConsumerState<WhatsAppSendSheet> {
             return templatesAsync.when(
               loading: () =>
                   const Center(child: CircularProgressIndicator()),
-              error: (e, _) => const _MensagemCentral(
-                icone: Icons.wifi_off_rounded,
-                titulo: 'Não foi possível carregar os templates',
-                subtitulo: 'Verifique sua conexão e tente novamente.',
-              ),
+              error: (e, _) {
+                // 403 não é problema de rede: o perfil não tem a permissão
+                // de templates — dizer a verdade evita parecer defeito.
+                final semPermissao =
+                    e is DioException && e.response?.statusCode == 403;
+                if (semPermissao) {
+                  return const _MensagemCentral(
+                    icone: Icons.lock_outline_rounded,
+                    titulo: 'Envio pelo gabinete indisponível',
+                    subtitulo:
+                        'Seu perfil não tem permissão para mensagens '
+                        'oficiais. Use a opção "Abrir no WhatsApp" ou fale '
+                        'com o administrador do gabinete.',
+                  );
+                }
+                return const _MensagemCentral(
+                  icone: Icons.wifi_off_rounded,
+                  titulo: 'Não foi possível carregar os templates',
+                  subtitulo: 'Verifique sua conexão e tente novamente.',
+                );
+              },
               data: (templates) => _conteudo(
                 context,
                 scrollController,
@@ -402,7 +419,6 @@ class _WhatsAppSendSheetState extends ConsumerState<WhatsAppSendSheet> {
     WhatsAppConfig config,
     WhatsAppTemplates templates,
   ) {
-    final cs = Theme.of(context).colorScheme;
     _prepararVariaveis();
 
     return ListView(
