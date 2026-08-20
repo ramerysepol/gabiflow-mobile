@@ -87,6 +87,7 @@ dependencies:
   record: ^6.0.0
   path_provider: ^2.1.4
   just_audio: ^0.10.0
+  audio_session: ^0.2.0
   video_player: ^2.9.0
   chewie: ^1.8.0
 

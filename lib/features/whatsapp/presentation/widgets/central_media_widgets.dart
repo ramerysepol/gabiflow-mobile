@@ -5,6 +5,7 @@ library;
 
 import 'dart:io';
 
+import 'package:audio_session/audio_session.dart';
 import 'package:chewie/chewie.dart';
 import 'package:flutter/material.dart';
 import 'package:just_audio/just_audio.dart';
@@ -84,8 +85,25 @@ class _AudioCentral {
         .toString();
   }
 
+  static bool _sessaoPronta = false;
+
+  /// Garante a sessão de áudio em modo reprodução — o plugin de gravação
+  /// (record) pode deixá-la em categoria de captura, que sai mudo no iOS.
+  static Future<void> _garantirSessao() async {
+    if (_sessaoPronta) return;
+    _sessaoPronta = true;
+    try {
+      final session = await AudioSession.instance;
+      await session.configure(const AudioSessionConfiguration.music());
+      await session.setActive(true);
+    } catch (_) {
+      // Sem sessão configurável — segue com o padrão da plataforma.
+    }
+  }
+
   static Future<void> tocar(String url) async {
     _garantirListener();
+    await _garantirSessao();
     if (urlAtual.value != url) {
       await player.stop();
       urlAtual.value = url;
