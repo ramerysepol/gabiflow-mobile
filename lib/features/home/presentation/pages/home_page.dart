@@ -409,6 +409,7 @@ class _AvatarMenu extends StatelessWidget {
       ],
       onSelected: (value) {
         if (value == 'logout') onLogout();
+        if (value == 'profile') context.push('/home/perfil');
       },
     );
   }

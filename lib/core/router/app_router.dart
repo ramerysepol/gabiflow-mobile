@@ -1,3 +1,6 @@
+import 'dart:io' show Platform;
+
+import 'package:flutter/cupertino.dart' show CupertinoPage;
 import 'package:flutter/widgets.dart';
 import 'package:go_router/go_router.dart';
 
@@ -13,6 +16,7 @@ import '../../features/demands/presentation/pages/demand_form_page.dart';
 import '../../features/demands/presentation/pages/demands_list_page.dart';
 import '../../features/home/presentation/pages/dashboard_page.dart';
 import '../../features/home/presentation/pages/home_page.dart';
+import '../../features/profile/presentation/pages/profile_page.dart';
 import '../../features/splash/presentation/pages/splash_page.dart';
 import '../../features/tenant/presentation/pages/tenant_setup_page.dart';
 import '../../features/whatsapp/presentation/pages/central_chat_page.dart';
@@ -94,6 +98,19 @@ final GoRouter appRouter = GoRouter(
           // abrir conversa precisa parecer instantaneo.
           pageBuilder: (_, state) {
             final id = int.tryParse(state.pathParameters['id'] ?? '') ?? 0;
+            // iOS: página Cupertino padrão — slide nativo + gesto de voltar
+            // arrastando da borda (a transição custom não suporta o gesto).
+            if (Platform.isIOS) {
+              return CupertinoPage<void>(
+                key: state.pageKey,
+                child: CentralChatPage(
+                  conversationId: id,
+                  nomeContato: state.uri.queryParameters['nome'],
+                  telefone: state.uri.queryParameters['tel'],
+                  fotoUrl: state.uri.queryParameters['foto'],
+                ),
+              );
+            }
             return CustomTransitionPage<void>(
               key: state.pageKey,
               // Nao-opaco: a lista continua visivel por tras durante o fade
@@ -123,6 +140,12 @@ final GoRouter appRouter = GoRouter(
               ),
             );
           },
+        ),
+
+        // ── Perfil do usuário ──────────────────────────────────────────────
+        GoRoute(
+          path: '/home/perfil',
+          builder: (_, __) => const ProfilePage(),
         ),
 
         // ── Munícipes ──────────────────────────────────────────────────────

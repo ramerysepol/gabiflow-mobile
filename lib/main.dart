@@ -61,6 +61,13 @@ class GabiFlowApp extends ConsumerWidget {
         GlobalWidgetsLocalizations.delegate,
         GlobalCupertinoLocalizations.delegate,
       ],
+      // Toque em qualquer área fora de um campo de texto esconde o teclado
+      // (comportamento esperado no iOS; no Android também ajuda).
+      builder: (context, child) => GestureDetector(
+        behavior: HitTestBehavior.translucent,
+        onTap: () => FocusManager.instance.primaryFocus?.unfocus(),
+        child: child,
+      ),
       routerConfig: appRouter,
     );
   }
