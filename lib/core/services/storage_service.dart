@@ -79,19 +79,24 @@ class StorageService {
     await _secureStorage.delete(key: AppConstants.userDataKey);
   }
   
-  /// Salva credenciais para login biométrico
-  static Future<void> saveBiometricCredentials(String email, String password) async {
+  /// Salva credenciais para login biométrico (por usuário + tenant).
+  static Future<void> saveBiometricCredentials(
+    String email,
+    String password, {
+    String? tenant,
+  }) async {
     final credentials = {
       'email': email,
       'password': password,
+      if (tenant != null) 'tenant': tenant,
     };
     await _secureStorage.write(
       key: 'biometric_credentials',
       value: jsonEncode(credentials),
     );
   }
-  
-  /// Recupera credenciais biométricas
+
+  /// Recupera credenciais biométricas (email, password e tenant quando houver)
   static Future<Map<String, String>?> getBiometricCredentials() async {
     final jsonString = await _secureStorage.read(key: 'biometric_credentials');
     if (jsonString != null) {
@@ -99,6 +104,7 @@ class StorageService {
       return {
         'email': data['email'] as String,
         'password': data['password'] as String,
+        if (data['tenant'] != null) 'tenant': data['tenant'] as String,
       };
     }
     return null;

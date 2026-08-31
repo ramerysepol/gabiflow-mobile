@@ -102,6 +102,7 @@ class BiometricService {
   static Future<bool> setupBiometricAfterLogin({
     required String email,
     required String password,
+    String? tenant,
   }) async {
     try {
       // Verifica se o dispositivo suporta
@@ -118,8 +119,9 @@ class BiometricService {
       );
       
       if (authenticated) {
-        // Salva as credenciais de forma segura
-        await StorageService.saveBiometricCredentials(email, password);
+        // Salva as credenciais de forma segura (por usuário + tenant)
+        await StorageService.saveBiometricCredentials(email, password,
+            tenant: tenant);
         await setBiometricEnabled(true);
         
         LoggerService.i('Biometric authentication configured successfully');

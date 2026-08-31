@@ -50,10 +50,19 @@ class _LoginPageState extends ConsumerState<LoginPage> {
     final supported = await BiometricService.isDeviceSupported();
     final canCheck = await BiometricService.canCheckBiometrics();
     final enabled = await BiometricService.isBiometricEnabled();
+    // Só oferece "Entrar com biometria" se a credencial salva for DESTE tenant
+    // (senão a digital logaria no gabinete/usuário errado). Credencial antiga
+    // sem tenant é aceita por compatibilidade.
+    var enabledParaTenant = false;
+    if (enabled) {
+      final cred = await StorageService.getBiometricCredentials();
+      final t = cred?['tenant'];
+      enabledParaTenant = t == null || t == widget.tenantSubdomain;
+    }
     if (mounted) {
       setState(() {
         _biometricAvailable = supported && canCheck;
-        _biometricEnabled = enabled;
+        _biometricEnabled = enabledParaTenant;
       });
     }
   }
@@ -106,14 +115,30 @@ class _LoginPageState extends ConsumerState<LoginPage> {
       if (!mounted) return;
 
       if (ok) {
-        // Oferece configurar biometria se não habilitada
-        if (_biometricAvailable && !_biometricEnabled) {
-          final setup = await _showBiometricDialog();
-          if (setup == true) {
-            await BiometricService.setupBiometricAfterLogin(
-              email: _emailController.text.trim(),
-              password: _passwordController.text,
-            );
+        // Oferece configurar/atualizar biometria. Re-oferece quando muda o
+        // usuário OU o tenant (a credencial salva precisa ser a de quem entrou).
+        if (_biometricAvailable) {
+          final cred = await StorageService.getBiometricCredentials();
+          final currentEmail = _emailController.text.trim();
+          final mesmaIdentidade = cred != null &&
+              cred['email'] == currentEmail &&
+              (cred['tenant'] == null ||
+                  cred['tenant'] == widget.tenantSubdomain);
+          final jaHabilitada = await BiometricService.isBiometricEnabled();
+
+          if (!jaHabilitada || !mesmaIdentidade) {
+            final setup = await _showBiometricDialog();
+            if (setup == true) {
+              await BiometricService.setupBiometricAfterLogin(
+                email: currentEmail,
+                password: _passwordController.text,
+                tenant: widget.tenantSubdomain,
+              );
+            } else if (jaHabilitada && !mesmaIdentidade) {
+              // Usuário/tenant diferente e recusou: remove a biometria antiga
+              // para a digital não logar o usuário anterior.
+              await BiometricService.setBiometricEnabled(false);
+            }
           }
         }
         if (!mounted) return;
