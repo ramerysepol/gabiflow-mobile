@@ -225,6 +225,33 @@ class ApiClient {
     }
   }
 
+  /// GET com resposta em streaming (SSE) — ex.: /api/whatsapp/sse.
+  /// Retorna o corpo bruto como [ResponseBody] para o chamador ler os bytes.
+  Future<Response<ResponseBody>> getStream(
+    String path, {
+    Map<String, dynamic>? queryParameters,
+    Options? options,
+    CancelToken? cancelToken,
+  }) async {
+    try {
+      LoggerService.i('Request: GET (stream) $path');
+      final base = options ?? Options();
+      return await _dio.get<ResponseBody>(
+        path,
+        queryParameters: queryParameters,
+        cancelToken: cancelToken,
+        options: base.copyWith(
+          responseType: ResponseType.stream,
+          headers: {...?base.headers, 'Accept': 'text/event-stream'},
+          receiveTimeout: Duration.zero,
+        ),
+      );
+    } on DioException catch (e) {
+      LoggerService.e('GET Stream Error: $path', e);
+      rethrow;
+    }
+  }
+
   /// PATCH request
   Future<Response<T>> patch<T>(
     String path, {

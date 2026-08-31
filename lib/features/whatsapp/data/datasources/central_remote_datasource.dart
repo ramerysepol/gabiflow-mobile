@@ -19,10 +19,12 @@ class CentralRemoteDataSource {
     final token = await StorageService.getAccessToken();
     final tenantConfig = await StorageService.getTenantConfig();
     final tenantId = tenantConfig?['subdomain'] as String? ?? '';
-    return Options(headers: {
-      if (token != null) 'Authorization': 'Bearer $token',
-      'X-Tenant-ID': tenantId,
-    });
+    return Options(
+      headers: {
+        if (token != null) 'Authorization': 'Bearer $token',
+        'X-Tenant-ID': tenantId,
+      },
+    );
   }
 
   /// Prefixa URLs relativas (/uploads/..., /api/whatsapp/media/...) com a URL
@@ -83,8 +85,10 @@ class CentralRemoteDataSource {
   }
 
   /// Busca mensagens; com [markRead] o servidor ja marca como lidas
-  /// (mesmo comportamento da central web).
-  Future<List<Mensagem>> listarMensagens(
+  /// (mesmo comportamento da central web). Tambem devolve o status da
+  /// janela de 24h e o provedor ativo — a mesma resposta do GET usado
+  /// pela central web (ver `messages/route.ts`).
+  Future<MensagensResult> listarMensagens(
     int conversationId, {
     bool markRead = true,
     int limit = 100,
@@ -112,20 +116,126 @@ class CentralRemoteDataSource {
       final cmp = a.createdAt.compareTo(b.createdAt);
       return cmp != 0 ? cmp : a.id.compareTo(b.id);
     });
-    return mensagens;
+    final janelaJson = data['window'];
+    return MensagensResult(
+      mensagens: mensagens,
+      janela: janelaJson is Map<String, dynamic>
+          ? JanelaInfo.fromJson(janelaJson)
+          : null,
+      provider: data['provider']?.toString() ?? 'unknown',
+      hasWindowRestriction: data['hasWindowRestriction'] == true,
+    );
   }
 
-  /// Envia texto. O servidor decide provedor/canal e devolve a mensagem criada.
-  Future<Mensagem> enviarTexto(int conversationId, String texto) async {
+  /// Envia texto. Com [contextMessageId] a mensagem cita/responde outra
+  /// (paridade com o reply do web). O servidor decide provedor/canal.
+  Future<Mensagem> enviarTexto(
+    int conversationId,
+    String texto, {
+    int? contextMessageId,
+  }) async {
     final response = await _apiClient.post<dynamic>(
       '/api/whatsapp/conversations/$conversationId/messages',
-      data: {'type': 'text', 'text': texto},
+      data: {
+        'type': 'text',
+        'text': texto,
+        if (contextMessageId != null) 'contextMessageId': contextMessageId,
+      },
       options: await _authOptions(),
     );
     final data = _unwrap(response, 'enviar mensagem');
     final msg = data['message'];
     if (msg is Map<String, dynamic>) return Mensagem.fromJson(msg);
     throw Exception('Resposta sem mensagem ao enviar');
+  }
+
+  /// Encaminha uma mensagem para outra conversa (por id) ou numero (por telefone).
+  Future<void> encaminharMensagem(
+    int conversationId,
+    int messageId, {
+    int? paraConversa,
+    String? paraTelefone,
+  }) async {
+    final response = await _apiClient.post<dynamic>(
+      '/api/whatsapp/conversations/$conversationId/messages/$messageId/forward',
+      data: {
+        if (paraConversa != null) 'targetConversationId': paraConversa,
+        if (paraTelefone != null && paraTelefone.isNotEmpty)
+          'targetPhone': paraTelefone,
+      },
+      options: await _authOptions(),
+    );
+    _unwrap(response, 'encaminhar mensagem');
+  }
+
+  /// Exclui uma mensagem (Meta nao remove no destinatario; some so da central).
+  Future<void> excluirMensagem(int conversationId, int messageId) async {
+    final response = await _apiClient.delete<dynamic>(
+      '/api/whatsapp/conversations/$conversationId/messages/$messageId',
+      options: await _authOptions(),
+    );
+    final data = response.data;
+    if (data is Map<String, dynamic> && data['success'] == false) {
+      throw Exception(data['error']?.toString() ?? 'Falha ao excluir mensagem');
+    }
+  }
+
+  /// Cria (ou reabre) uma conversa por telefone/canal. Retorna o id.
+  Future<int> criarConversa({
+    required String telefone,
+    String? nomeContato,
+    String canal = 'whatsapp',
+    String? contaCanal,
+    String? mensagemInicial,
+  }) async {
+    final response = await _apiClient.post<dynamic>(
+      '/api/whatsapp/conversations',
+      data: {
+        'phone': telefone,
+        if (nomeContato != null && nomeContato.isNotEmpty)
+          'contactName': nomeContato,
+        'channel': canal,
+        if (contaCanal != null) 'channelAccountId': contaCanal,
+        if (mensagemInicial != null && mensagemInicial.trim().isNotEmpty)
+          'initialMessage': mensagemInicial.trim(),
+      },
+      options: await _authOptions(),
+    );
+    final data = _unwrap(response, 'criar conversa');
+    final conv = data['conversation'];
+    if (conv is Map<String, dynamic> && conv['id'] != null) {
+      return (conv['id'] as num).toInt();
+    }
+    if (data['id'] != null) return (data['id'] as num).toInt();
+    throw Exception('Resposta sem id da conversa criada');
+  }
+
+  /// Envia template Meta aprovado para reabrir a conversa fora da janela
+  /// de 24h. [templateVariables] usa chaves numericas em string ("1", "2"…)
+  /// na mesma ordem das variaveis {{1}}, {{2}} do corpo do template — o
+  /// servidor monta os `components` de envio a partir delas (mesmo payload
+  /// do `ChatPanel.tsx` da central web).
+  Future<Mensagem> enviarTemplateMeta(
+    int conversationId, {
+    required String metaTemplateName,
+    required String metaTemplateLanguage,
+    Map<String, String>? templateVariables,
+  }) async {
+    final response = await _apiClient.post<dynamic>(
+      '/api/whatsapp/conversations/$conversationId/messages',
+      data: {
+        'type': 'template',
+        'metaTemplateName': metaTemplateName,
+        'metaTemplateLanguage': metaTemplateLanguage,
+        if (templateVariables != null && templateVariables.isNotEmpty)
+          'templateVariables': templateVariables,
+      },
+      options: await _authOptions(),
+    );
+    final data = _unwrap(response, 'enviar template');
+    final msg = data['message'];
+    if (msg is Map<String, dynamic>) return Mensagem.fromJson(msg);
+    throw Exception('Resposta sem mensagem ao enviar template');
   }
 
   /// Envia midia (imagem/video/documento/audio) via multipart. O servidor
@@ -140,7 +250,8 @@ class CentralRemoteDataSource {
     final form = FormData.fromMap({
       'file': await MultipartFile.fromFile(filePath, filename: filename),
       'type': tipo,
-      if (caption != null && caption.trim().isNotEmpty) 'caption': caption.trim(),
+      if (caption != null && caption.trim().isNotEmpty)
+        'caption': caption.trim(),
     });
     final base = await _authOptions();
     final response = await _apiClient.post<dynamic>(
@@ -158,21 +269,101 @@ class CentralRemoteDataSource {
     throw Exception('Resposta sem mensagem ao enviar midia');
   }
 
-  /// Assume a conversa para o usuario logado (atendimento ativo).
-  Future<void> assumirConversa(int conversationId, int userId) async {
-    final response = await _apiClient.patch<dynamic>(
+  /// Detalhe completo da conversa (status, prioridade, departamento, notas,
+  /// tags, janela, constituinte). Usado no painel de Informacoes.
+  Future<ConversaDetalhe> detalheConversa(int conversationId) async {
+    final response = await _apiClient.get<dynamic>(
       '/api/whatsapp/conversations/$conversationId',
-      data: {'assignedTo': userId, 'status': 'active'},
       options: await _authOptions(),
     );
-    _unwrap(response, 'assumir conversa');
+    final data = _unwrap(response, 'detalhe da conversa');
+    final conv = data['conversation'];
+    final mapa = conv is Map<String, dynamic> ? conv : data;
+    final abs = await _absoluta(mapa['profilePictureUrl'] as String?);
+    if (abs != null) mapa['profilePictureUrl'] = abs;
+    return ConversaDetalhe.fromJson(mapa);
   }
 
-  /// Encerra a conversa (mesma rota do web, com motivo).
-  Future<void> encerrarConversa(int conversationId, {String? motivo}) async {
+  /// Atualiza campos da conversa (status, prioridade, departamento, notas).
+  /// PATCH parcial — envia so o que for informado.
+  Future<void> atualizarConversa(
+    int conversationId, {
+    String? status,
+    String? prioridade,
+    String? departamento,
+    String? notasInternas,
+  }) async {
+    final response = await _apiClient.patch<dynamic>(
+      '/api/whatsapp/conversations/$conversationId',
+      data: {
+        if (status != null) 'status': status,
+        if (prioridade != null) 'priority': prioridade,
+        if (departamento != null) 'department': departamento,
+        if (notasInternas != null) 'internalNotes': notasInternas,
+      },
+      options: await _authOptions(),
+    );
+    _unwrap(response, 'atualizar conversa');
+  }
+
+  /// Pausa/retoma o atendimento da conversa.
+  Future<void> pausarConversa(int conversationId, bool pausar) async {
+    final response = await _apiClient.post<dynamic>(
+      '/api/whatsapp/conversations/$conversationId/pause',
+      data: {'paused': pausar},
+      options: await _authOptions(),
+    );
+    _unwrap(response, 'pausar conversa');
+  }
+
+  /// Historico de protocolos/atendimentos anteriores do contato.
+  Future<List<ProtocoloHistorico>> historicoProtocolos(
+      int conversationId) async {
+    final response = await _apiClient.get<dynamic>(
+      '/api/whatsapp/conversations/$conversationId/history',
+      options: await _authOptions(),
+    );
+    final data = _unwrap(response, 'historico');
+    final lista = data['history'] ?? data['protocols'] ?? data['conversations'];
+    if (lista is List) {
+      return lista
+          .whereType<Map<String, dynamic>>()
+          .map(ProtocoloHistorico.fromJson)
+          .toList();
+    }
+    return const [];
+  }
+
+  /// Assume a conversa para o usuario logado (atendimento ativo).
+  /// Usa a rota /privacy (mesma do web): busca a conversa SEM o filtro de
+  /// visibilidade por departamento — o PATCH direto retornava "nao encontrada".
+  Future<void> assumirConversa(int conversationId, int userId) async {
+    final response = await _apiClient.post<dynamic>(
+      '/api/whatsapp/conversations/$conversationId/privacy',
+      data: const <String, dynamic>{},
+      options: await _authOptions(),
+    );
+    final data = response.data;
+    if (data is Map<String, dynamic> && data['success'] == false) {
+      throw Exception(data['error']?.toString() ?? 'Falha ao assumir conversa');
+    }
+  }
+
+  /// Encerra a conversa (mesma rota do web). [resolucao] em
+  /// resolved|unresolved|inactive; [notas] = observacoes do encerramento.
+  Future<void> encerrarConversa(
+    int conversationId, {
+    String? motivo,
+    String? resolucao,
+    String? notas,
+  }) async {
     final response = await _apiClient.post<dynamic>(
       '/api/whatsapp/conversations/$conversationId/close',
-      data: {'reason': motivo ?? 'Resolvido'},
+      data: {
+        'reason': motivo ?? 'Resolvido',
+        if (resolucao != null) 'resolution': resolucao,
+        if (notas != null && notas.trim().isNotEmpty) 'notes': notas.trim(),
+      },
       options: await _authOptions(),
     );
     _unwrap(response, 'encerrar conversa');
@@ -188,22 +379,128 @@ class CentralRemoteDataSource {
     _unwrap(response, 'arquivar conversa');
   }
 
-  /// Transfere para outro atendente.
+  /// Transfere a conversa. Informe [paraUsuario] (atendente) OU
+  /// [paraDepartamento] (id ou nome do departamento). [motivo] vira o `reason`
+  /// registrado (mensagem de sistema + nota interna, igual ao web).
   Future<void> transferirConversa(
     int conversationId, {
-    required int paraUsuario,
+    int? paraUsuario,
+    String? paraDepartamento,
     String? motivo,
+    String? notas,
   }) async {
+    assert(paraUsuario != null || paraDepartamento != null,
+        'informe atendente ou departamento');
     final response = await _apiClient.post<dynamic>(
       '/api/whatsapp/conversations/$conversationId/transfer',
       data: {
-        'toUserId': paraUsuario,
-        'reason': motivo ?? 'Transferida pelo aplicativo',
+        if (paraUsuario != null) 'toUserId': paraUsuario,
+        if (paraDepartamento != null && paraDepartamento.isNotEmpty)
+          'toDepartment': paraDepartamento,
+        'reason': (motivo != null && motivo.trim().isNotEmpty)
+            ? motivo.trim()
+            : 'Transferida pelo aplicativo',
+        if (notas != null && notas.trim().isNotEmpty) 'notes': notas.trim(),
         'notifyUser': true,
       },
       options: await _authOptions(),
     );
     _unwrap(response, 'transferir conversa');
+  }
+
+  /// Departamentos ativos do tenant (destino de transferencia).
+  Future<List<Departamento>> listarDepartamentos() async {
+    final response = await _apiClient.get<dynamic>(
+      '/api/whatsapp/departments',
+      queryParameters: {'active_only': 'true'},
+      options: await _authOptions(),
+    );
+    final raw = response.data;
+    List<dynamic> lista = const [];
+    if (raw is Map<String, dynamic>) {
+      final inner = raw['data'];
+      if (inner is List<dynamic>) {
+        lista = inner;
+      } else if (inner is Map<String, dynamic> &&
+          inner['departments'] is List<dynamic>) {
+        lista = inner['departments'] as List<dynamic>;
+      } else if (raw['departments'] is List<dynamic>) {
+        lista = raw['departments'] as List<dynamic>;
+      }
+    }
+    return lista
+        .whereType<Map<String, dynamic>>()
+        .map(Departamento.fromJson)
+        .toList();
+  }
+
+  /// Catalogo de etiquetas (tags) do tenant, com cores.
+  Future<List<Etiqueta>> listarEtiquetas() async {
+    final response = await _apiClient
+        .get<dynamic>(
+          '/api/whatsapp/conversations/tags',
+          options: await _authOptions(),
+        )
+        .timeout(const Duration(seconds: 12));
+    final raw = response.data;
+    List<dynamic> lista = const [];
+    if (raw is Map<String, dynamic>) {
+      final inner = raw['data'];
+      if (inner is List<dynamic>) {
+        lista = inner;
+      } else if (inner is Map<String, dynamic> && inner['tags'] is List) {
+        lista = inner['tags'] as List<dynamic>;
+      } else if (raw['tags'] is List<dynamic>) {
+        lista = raw['tags'] as List<dynamic>;
+      }
+    }
+    return lista
+        .whereType<Map<String, dynamic>>()
+        .map(Etiqueta.fromJson)
+        .where((e) => e.nome.isNotEmpty)
+        .toList();
+  }
+
+  /// Etiquetas atualmente aplicadas a uma conversa (nomes).
+  /// O backend responde `{success:true, data:[...]}` — `data` e a LISTA de nomes.
+  Future<List<String>> etiquetasDaConversa(int conversationId) async {
+    final response = await _apiClient.get<dynamic>(
+      '/api/whatsapp/conversations/$conversationId/tags',
+      options: await _authOptions(),
+    );
+    final raw = response.data;
+    final inner = raw is Map<String, dynamic> ? raw['data'] : null;
+    final tags = inner is List
+        ? inner
+        : (inner is Map && inner['tags'] is List ? inner['tags'] as List : null);
+    if (tags == null) return const [];
+    return tags.map((e) => e.toString()).where((s) => s.isNotEmpty).toList();
+  }
+
+  /// Substitui as etiquetas aplicadas a uma conversa (PUT substitui o array).
+  Future<void> atualizarEtiquetasConversa(
+    int conversationId,
+    List<String> etiquetas,
+  ) async {
+    final response = await _apiClient.put<dynamic>(
+      '/api/whatsapp/conversations/$conversationId/tags',
+      data: {'tags': etiquetas},
+      options: await _authOptions(),
+    );
+    _unwrap(response, 'atualizar etiquetas');
+  }
+
+  /// Cria (ou faz upsert por nome) uma etiqueta no catalogo do tenant.
+  Future<void> criarEtiqueta(String nome, {String? cor}) async {
+    final response = await _apiClient.post<dynamic>(
+      '/api/whatsapp/conversations/tags',
+      data: {'name': nome, if (cor != null) 'color': cor},
+      options: await _authOptions(),
+    );
+    final data = response.data;
+    if (data is Map<String, dynamic> && data['success'] == false) {
+      throw Exception(data['error']?.toString() ?? 'Falha ao criar etiqueta');
+    }
   }
 
   /// Lista atendentes do tenant (para transferencia).
@@ -243,6 +540,99 @@ class CentralRemoteDataSource {
     if (data is! Map<String, dynamic> || data['success'] != true) {
       final erro = data is Map<String, dynamic> ? data['error'] : null;
       throw Exception(erro?.toString() ?? 'Falha ao cadastrar resposta rapida');
+    }
+  }
+
+  /// Abre o stream SSE da central (/api/whatsapp/sse). O chamador consome
+  /// `.stream` para reagir a eventos em tempo real.
+  Future<ResponseBody> conectarSse(CancelToken cancelToken) async {
+    final resp = await _apiClient.getStream(
+      '/api/whatsapp/sse',
+      options: await _authOptions(),
+      cancelToken: cancelToken,
+    );
+    return resp.data!;
+  }
+
+  /// Agenda uma mensagem para envio futuro.
+  Future<void> agendarMensagem(
+    int conversationId, {
+    required String mensagem,
+    required DateTime quando,
+  }) async {
+    final response = await _apiClient.post<dynamic>(
+      '/api/whatsapp/conversations/$conversationId/schedule',
+      data: {
+        'message': mensagem,
+        'scheduledAt': quando.toUtc().toIso8601String(),
+      },
+      options: await _authOptions(),
+    );
+    _unwrap(response, 'agendar mensagem');
+  }
+
+  /// URL da conversa em PDF/imprimivel (abrir no navegador com o token do tenant).
+  Future<String> urlExportarPdf(int conversationId) async {
+    final tenantConfig = await StorageService.getTenantConfig();
+    final sub = tenantConfig?['subdomain'] as String? ?? '';
+    final base = EnvConfig.getTenantUrl(sub);
+    return '$base/api/whatsapp/conversations/$conversationId/export-pdf';
+  }
+
+  /// Sugestoes de resposta geradas por IA. Backend: `{success:true, data:[...]}`
+  /// — `data` e a LISTA de sugestoes (strings ou objetos com text/suggestion).
+  Future<List<String>> sugestoesIA(int conversationId) async {
+    final response = await _apiClient.get<dynamic>(
+      '/api/whatsapp/conversations/$conversationId/suggestions',
+      options: await _authOptions(),
+    );
+    final raw = response.data;
+    final inner = raw is Map<String, dynamic> ? raw['data'] : null;
+    final s = inner is List
+        ? inner
+        : (inner is Map
+            ? (inner['suggestions'] ?? inner['suggestion'])
+            : null);
+    if (s is List) {
+      return s
+          .map((e) => e is Map
+              ? (e['text'] ?? e['suggestion'] ?? e['content'] ?? e['message'] ?? '')
+                  .toString()
+              : e.toString())
+          .where((t) => t.trim().isNotEmpty)
+          .toList();
+    }
+    if (s is String && s.trim().isNotEmpty) return [s];
+    return const [];
+  }
+
+  /// Atualiza uma resposta rapida existente.
+  Future<void> atualizarRespostaRapida(
+    int id, {
+    required String atalho,
+    required String conteudo,
+  }) async {
+    final response = await _apiClient.put<dynamic>(
+      '/api/whatsapp/quick-replies',
+      data: {'id': id, 'shortcut': atalho, 'content': conteudo},
+      options: await _authOptions(),
+    );
+    final data = response.data;
+    if (data is Map<String, dynamic> && data['success'] == false) {
+      throw Exception(data['error']?.toString() ?? 'Falha ao atualizar');
+    }
+  }
+
+  /// Exclui uma resposta rapida.
+  Future<void> excluirRespostaRapida(int id) async {
+    final response = await _apiClient.delete<dynamic>(
+      '/api/whatsapp/quick-replies',
+      queryParameters: {'id': id},
+      options: await _authOptions(),
+    );
+    final data = response.data;
+    if (data is Map<String, dynamic> && data['success'] == false) {
+      throw Exception(data['error']?.toString() ?? 'Falha ao excluir');
     }
   }
 

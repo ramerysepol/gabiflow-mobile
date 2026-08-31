@@ -82,15 +82,20 @@ final GoRouter appRouter = GoRouter(
     ShellRoute(
       builder: (context, state, child) => HomePage(child: child),
       routes: [
+        // Abas do dock trocam SEM transicao (padrao WhatsApp/Instagram):
+        // a animacao do Material desenhava a aba nova por cima da antiga
+        // enquanto a lista pesada construia — lida como sobreposicao lenta.
         GoRoute(
           path: '/home',
-          builder: (_, __) => const DashboardPage(),
+          pageBuilder: (_, state) => NoTransitionPage(
+              key: state.pageKey, child: const DashboardPage()),
         ),
 
         // ── Atendimento (Central WhatsApp) ─────────────────────────────────
         GoRoute(
           path: '/home/atendimento',
-          builder: (_, __) => const CentralPage(),
+          pageBuilder: (_, state) =>
+              NoTransitionPage(key: state.pageKey, child: const CentralPage()),
         ),
         GoRoute(
           path: '/home/atendimento/chat/:id',
@@ -108,28 +113,28 @@ final GoRouter appRouter = GoRouter(
                   nomeContato: state.uri.queryParameters['nome'],
                   telefone: state.uri.queryParameters['tel'],
                   fotoUrl: state.uri.queryParameters['foto'],
+                  canal: state.uri.queryParameters['canal'],
+                  contaCanal: state.uri.queryParameters['conta'],
                 ),
               );
             }
+            // Android: slide opaco curto. Fade nao-opaco deixava a lista
+            // visivel por tras (sobreposicao); o Zoom padrao do Material e'
+            // mais caro e parecia lento. O slide cobre a lista de uma vez.
             return CustomTransitionPage<void>(
               key: state.pageKey,
-              // Nao-opaco: a lista continua visivel por tras durante o fade
-              // (opaco = fade sobre fundo preto do Navigator).
-              opaque: false,
-              transitionDuration: const Duration(milliseconds: 180),
-              reverseTransitionDuration: const Duration(milliseconds: 150),
+              transitionDuration: const Duration(milliseconds: 200),
+              reverseTransitionDuration: const Duration(milliseconds: 180),
               transitionsBuilder: (_, animation, __, child) {
-                final curva = CurvedAnimation(
-                    parent: animation, curve: Curves.easeOutCubic);
-                return FadeTransition(
-                  opacity: curva,
-                  child: SlideTransition(
-                    position: Tween<Offset>(
-                      begin: const Offset(0.12, 0),
-                      end: Offset.zero,
-                    ).animate(curva),
-                    child: child,
-                  ),
+                return SlideTransition(
+                  position: Tween<Offset>(
+                    begin: const Offset(1, 0),
+                    end: Offset.zero,
+                  ).animate(CurvedAnimation(
+                    parent: animation,
+                    curve: Curves.easeOutCubic,
+                  )),
+                  child: child,
                 );
               },
               child: CentralChatPage(
@@ -137,6 +142,8 @@ final GoRouter appRouter = GoRouter(
                 nomeContato: state.uri.queryParameters['nome'],
                 telefone: state.uri.queryParameters['tel'],
                 fotoUrl: state.uri.queryParameters['foto'],
+                canal: state.uri.queryParameters['canal'],
+                contaCanal: state.uri.queryParameters['conta'],
               ),
             );
           },
@@ -151,7 +158,8 @@ final GoRouter appRouter = GoRouter(
         // ── Munícipes ──────────────────────────────────────────────────────
         GoRoute(
           path: '/home/constituents',
-          builder: (_, __) => const ConstituentsListPage(),
+          pageBuilder: (_, state) => NoTransitionPage(
+              key: state.pageKey, child: const ConstituentsListPage()),
         ),
         GoRoute(
           path: '/home/constituents/new',
@@ -183,7 +191,8 @@ final GoRouter appRouter = GoRouter(
         // ── Demandas ───────────────────────────────────────────────────────
         GoRoute(
           path: '/home/demands',
-          builder: (_, __) => const DemandsListPage(),
+          pageBuilder: (_, state) => NoTransitionPage(
+              key: state.pageKey, child: const DemandsListPage()),
         ),
         GoRoute(
           path: '/home/demands/new',
@@ -204,7 +213,8 @@ final GoRouter appRouter = GoRouter(
         // ── Agenda ─────────────────────────────────────────────────────────
         GoRoute(
           path: '/home/agenda',
-          builder: (_, __) => const AgendaPage(),
+          pageBuilder: (_, state) =>
+              NoTransitionPage(key: state.pageKey, child: const AgendaPage()),
         ),
         GoRoute(
           path: '/home/agenda/new',
@@ -229,23 +239,28 @@ final GoRouter appRouter = GoRouter(
           routes: [
             GoRoute(
               path: '/home/eleitoral',
-              builder: (_, __) => const EleitoralVisaoPage(),
+              pageBuilder: (_, state) => NoTransitionPage(
+                  key: state.pageKey, child: const EleitoralVisaoPage()),
             ),
             GoRoute(
               path: '/home/eleitoral/mapa',
-              builder: (_, __) => const EleitoralMapaPage(),
+              pageBuilder: (_, state) => NoTransitionPage(
+                  key: state.pageKey, child: const EleitoralMapaPage()),
             ),
             GoRoute(
               path: '/home/eleitoral/candidatos',
-              builder: (_, __) => const EleitoralHomePage(),
+              pageBuilder: (_, state) => NoTransitionPage(
+                  key: state.pageKey, child: const EleitoralHomePage()),
             ),
             GoRoute(
               path: '/home/eleitoral/rankings',
-              builder: (_, __) => const RankingsPage(),
+              pageBuilder: (_, state) => NoTransitionPage(
+                  key: state.pageKey, child: const RankingsPage()),
             ),
             GoRoute(
               path: '/home/eleitoral/ia',
-              builder: (_, __) => const CommandCenterPage(),
+              pageBuilder: (_, state) => NoTransitionPage(
+                  key: state.pageKey, child: const CommandCenterPage()),
             ),
           ],
         ),

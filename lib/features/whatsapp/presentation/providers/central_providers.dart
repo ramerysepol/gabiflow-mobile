@@ -10,6 +10,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/providers/core_providers.dart';
 import '../../data/datasources/central_remote_datasource.dart';
+import '../../data/datasources/central_sse_service.dart';
 import '../../data/models/central_models.dart';
 
 final centralDataSourceProvider = Provider<CentralRemoteDataSource>((ref) {
@@ -21,7 +22,10 @@ final centralDataSourceProvider = Provider<CentralRemoteDataSource>((ref) {
 class ConversasState {
   final List<ConversaResumo> conversas;
   final Map<String, dynamic> stats;
+  final int total;
   final bool carregando;
+  final bool carregandoMais;
+  final bool hasMore;
   final String? erro;
   final String filtroStatus; // csv aceito pela API
   final String busca;
@@ -29,7 +33,10 @@ class ConversasState {
   const ConversasState({
     this.conversas = const [],
     this.stats = const {},
+    this.total = 0,
     this.carregando = false,
+    this.carregandoMais = false,
+    this.hasMore = false,
     this.erro,
     this.filtroStatus = 'waiting,active',
     this.busca = '',
@@ -38,30 +45,41 @@ class ConversasState {
   ConversasState copyWith({
     List<ConversaResumo>? conversas,
     Map<String, dynamic>? stats,
+    int? total,
     bool? carregando,
+    bool? carregandoMais,
+    bool? hasMore,
     String? erro,
     String? filtroStatus,
     String? busca,
     bool limparErro = false,
-  }) =>
-      ConversasState(
-        conversas: conversas ?? this.conversas,
-        stats: stats ?? this.stats,
-        carregando: carregando ?? this.carregando,
-        erro: limparErro ? null : (erro ?? this.erro),
-        filtroStatus: filtroStatus ?? this.filtroStatus,
-        busca: busca ?? this.busca,
-      );
+  }) => ConversasState(
+    conversas: conversas ?? this.conversas,
+    stats: stats ?? this.stats,
+    total: total ?? this.total,
+    carregando: carregando ?? this.carregando,
+    carregandoMais: carregandoMais ?? this.carregandoMais,
+    hasMore: hasMore ?? this.hasMore,
+    erro: limparErro ? null : (erro ?? this.erro),
+    filtroStatus: filtroStatus ?? this.filtroStatus,
+    busca: busca ?? this.busca,
+  );
 }
 
 class ConversasNotifier extends StateNotifier<ConversasState> {
   final CentralRemoteDataSource _ds;
   Timer? _pollTimer;
+  CentralSseService? _sse;
+  static const _pagina = 50;
+  int _limite = _pagina; // cresce no scroll infinito; o poll re-busca a pagina toda
 
   ConversasNotifier(this._ds) : super(const ConversasState()) {
     carregar();
+    // SSE dispara refresh instantaneo; o polling (mais lento) e o fallback.
+    _sse = CentralSseService(_ds, onEvento: () => carregar(silencioso: true))
+      ..conectar();
     _pollTimer = Timer.periodic(
-      const Duration(seconds: 10),
+      const Duration(seconds: 15),
       (_) => carregar(silencioso: true),
     );
   }
@@ -72,11 +90,14 @@ class ConversasNotifier extends StateNotifier<ConversasState> {
       final r = await _ds.listarConversas(
         status: state.filtroStatus,
         search: state.busca.isEmpty ? null : state.busca,
+        limit: _limite,
       );
       if (!mounted) return;
       state = state.copyWith(
         conversas: r.conversas,
         stats: r.stats,
+        total: r.total,
+        hasMore: r.hasMore,
         carregando: false,
         limparErro: true,
       );
@@ -87,12 +108,24 @@ class ConversasNotifier extends StateNotifier<ConversasState> {
     }
   }
 
+  /// Scroll infinito: aumenta a pagina e recarrega (mantem simples e compativel
+  /// com o polling, que sempre busca a pagina inteira).
+  Future<void> carregarMais() async {
+    if (state.carregandoMais || !state.hasMore) return;
+    state = state.copyWith(carregandoMais: true);
+    _limite += _pagina;
+    await carregar(silencioso: true);
+    if (mounted) state = state.copyWith(carregandoMais: false);
+  }
+
   void setFiltro(String statusCsv) {
+    _limite = _pagina;
     state = state.copyWith(filtroStatus: statusCsv);
     carregar();
   }
 
   void setBusca(String texto) {
+    _limite = _pagina;
     state = state.copyWith(busca: texto);
     carregar();
   }
@@ -100,14 +133,15 @@ class ConversasNotifier extends StateNotifier<ConversasState> {
   @override
   void dispose() {
     _pollTimer?.cancel();
+    _sse?.fechar();
     super.dispose();
   }
 }
 
 final conversasProvider =
     StateNotifierProvider.autoDispose<ConversasNotifier, ConversasState>((ref) {
-  return ConversasNotifier(ref.watch(centralDataSourceProvider));
-});
+      return ConversasNotifier(ref.watch(centralDataSourceProvider));
+    });
 
 // ── Chat de uma conversa ───────────────────────────────────────────────────
 
@@ -116,39 +150,58 @@ class ChatState {
   final bool carregando;
   final bool enviando;
   final String? erro;
+  final JanelaInfo? janela;
+  final String provider;
+  final bool hasWindowRestriction;
 
   const ChatState({
     this.mensagens = const [],
     this.carregando = false,
     this.enviando = false,
     this.erro,
+    this.janela,
+    this.provider = 'unknown',
+    this.hasWindowRestriction = false,
   });
+
+  /// Bloqueio de envio livre só existe quando o provedor tem restrição de
+  /// janela (Meta API) E a janela realmente expirou.
+  bool get janelaExpirada =>
+      hasWindowRestriction && janela != null && !janela!.withinWindow;
 
   ChatState copyWith({
     List<Mensagem>? mensagens,
     bool? carregando,
     bool? enviando,
     String? erro,
+    JanelaInfo? janela,
+    String? provider,
+    bool? hasWindowRestriction,
     bool limparErro = false,
-  }) =>
-      ChatState(
-        mensagens: mensagens ?? this.mensagens,
-        carregando: carregando ?? this.carregando,
-        enviando: enviando ?? this.enviando,
-        erro: limparErro ? null : (erro ?? this.erro),
-      );
+  }) => ChatState(
+    mensagens: mensagens ?? this.mensagens,
+    carregando: carregando ?? this.carregando,
+    enviando: enviando ?? this.enviando,
+    erro: limparErro ? null : (erro ?? this.erro),
+    janela: janela ?? this.janela,
+    provider: provider ?? this.provider,
+    hasWindowRestriction: hasWindowRestriction ?? this.hasWindowRestriction,
+  );
 }
 
 class ChatNotifier extends StateNotifier<ChatState> {
   final CentralRemoteDataSource _ds;
   final int conversationId;
   Timer? _pollTimer;
+  CentralSseService? _sse;
   int _enviosLocais = 0; // ids negativos temporarios para otimismo
 
   ChatNotifier(this._ds, this.conversationId) : super(const ChatState()) {
     carregar();
+    _sse = CentralSseService(_ds, onEvento: () => carregar(silencioso: true))
+      ..conectar();
     _pollTimer = Timer.periodic(
-      const Duration(seconds: 5),
+      const Duration(seconds: 8),
       (_) => carregar(silencioso: true),
     );
   }
@@ -156,15 +209,19 @@ class ChatNotifier extends StateNotifier<ChatState> {
   Future<void> carregar({bool silencioso = false}) async {
     if (!silencioso) state = state.copyWith(carregando: true, limparErro: true);
     try {
-      final mensagens = await _ds.listarMensagens(conversationId);
+      final resultado = await _ds.listarMensagens(conversationId);
       if (!mounted) return;
       // Preserva mensagens otimistas (id negativo) ainda nao confirmadas.
-      final pendentes =
-          state.mensagens.where((m) => m.id < 0).toList(growable: false);
+      final pendentes = state.mensagens
+          .where((m) => m.id < 0)
+          .toList(growable: false);
       state = state.copyWith(
-        mensagens: [...mensagens, ...pendentes],
+        mensagens: [...resultado.mensagens, ...pendentes],
         carregando: false,
         limparErro: true,
+        janela: resultado.janela,
+        provider: resultado.provider,
+        hasWindowRestriction: resultado.hasWindowRestriction,
       );
     } catch (e) {
       if (!mounted) return;
@@ -179,7 +236,7 @@ class ChatNotifier extends StateNotifier<ChatState> {
     }
   }
 
-  Future<void> enviarTexto(String texto) async {
+  Future<void> enviarTexto(String texto, {int? contextMessageId}) async {
     final limpo = texto.trim();
     if (limpo.isEmpty || state.enviando) return;
 
@@ -201,7 +258,11 @@ class ChatNotifier extends StateNotifier<ChatState> {
     );
 
     try {
-      final enviada = await _ds.enviarTexto(conversationId, limpo);
+      final enviada = await _ds.enviarTexto(
+        conversationId,
+        limpo,
+        contextMessageId: contextMessageId,
+      );
       if (!mounted) return;
       final atualizadas = state.mensagens
           .map((m) => m.id == otimista.id ? enviada : m)
@@ -210,8 +271,10 @@ class ChatNotifier extends StateNotifier<ChatState> {
     } catch (e) {
       if (!mounted) return;
       final atualizadas = state.mensagens
-          .map((m) =>
-              m.id == otimista.id ? otimista.copyWith(status: 'failed') : m)
+          .map(
+            (m) =>
+                m.id == otimista.id ? otimista.copyWith(status: 'failed') : m,
+          )
           .toList(growable: false);
       state = state.copyWith(
         mensagens: atualizadas,
@@ -261,14 +324,80 @@ class ChatNotifier extends StateNotifier<ChatState> {
     } catch (e) {
       if (!mounted) return;
       final atualizadas = state.mensagens
-          .map((m) =>
-              m.id == otimista.id ? otimista.copyWith(status: 'failed') : m)
+          .map(
+            (m) =>
+                m.id == otimista.id ? otimista.copyWith(status: 'failed') : m,
+          )
           .toList(growable: false);
       state = state.copyWith(
         mensagens: atualizadas,
         enviando: false,
         erro: 'Falha ao enviar mídia: $e',
       );
+    }
+  }
+
+  /// Reabre a conversa fora da janela de 24h enviando um template Meta
+  /// aprovado. Ao concluir, recarrega mensagens + janela (o template pode
+  /// ter renovado a janela no servidor).
+  Future<bool> enviarTemplateMeta({
+    required String metaTemplateName,
+    required String metaTemplateLanguage,
+    Map<String, String>? templateVariables,
+  }) async {
+    if (state.enviando) return false;
+    state = state.copyWith(enviando: true, limparErro: true);
+    try {
+      await _ds.enviarTemplateMeta(
+        conversationId,
+        metaTemplateName: metaTemplateName,
+        metaTemplateLanguage: metaTemplateLanguage,
+        templateVariables: templateVariables,
+      );
+      if (!mounted) return true;
+      state = state.copyWith(enviando: false);
+      await carregar();
+      return true;
+    } catch (e) {
+      if (!mounted) return false;
+      state = state.copyWith(
+        enviando: false,
+        erro: 'Falha ao enviar template: $e',
+      );
+      return false;
+    }
+  }
+
+  /// Encaminha uma mensagem para outra conversa/numero.
+  Future<bool> encaminhar(int messageId,
+      {int? paraConversa, String? paraTelefone}) async {
+    try {
+      await _ds.encaminharMensagem(
+        conversationId,
+        messageId,
+        paraConversa: paraConversa,
+        paraTelefone: paraTelefone,
+      );
+      return true;
+    } catch (e) {
+      if (mounted) state = state.copyWith(erro: 'Falha ao encaminhar: $e');
+      return false;
+    }
+  }
+
+  /// Exclui uma mensagem (some da central; Meta nao remove no destinatario).
+  Future<void> excluir(int messageId) async {
+    final antes = state.mensagens;
+    // Remocao otimista.
+    state = state.copyWith(
+      mensagens: antes.where((m) => m.id != messageId).toList(growable: false),
+    );
+    try {
+      await _ds.excluirMensagem(conversationId, messageId);
+    } catch (e) {
+      if (!mounted) return;
+      // Reverte se falhar.
+      state = state.copyWith(mensagens: antes, erro: 'Falha ao excluir: $e');
     }
   }
 
@@ -285,17 +414,46 @@ class ChatNotifier extends StateNotifier<ChatState> {
   @override
   void dispose() {
     _pollTimer?.cancel();
+    _sse?.fechar();
     super.dispose();
   }
 }
 
 final chatProvider = StateNotifierProvider.autoDispose
     .family<ChatNotifier, ChatState, int>((ref, conversationId) {
-  return ChatNotifier(ref.watch(centralDataSourceProvider), conversationId);
-});
+      return ChatNotifier(ref.watch(centralDataSourceProvider), conversationId);
+    });
 
 /// Respostas rapidas do tenant (carrega uma vez por sessao de tela).
 final respostasRapidasProvider =
     FutureProvider.autoDispose<List<RespostaRapida>>((ref) {
-  return ref.watch(centralDataSourceProvider).respostasRapidas();
-});
+      return ref.watch(centralDataSourceProvider).respostasRapidas();
+    });
+
+/// Catalogo de etiquetas do tenant (mantido em cache enquanto a central estiver
+/// aberta). Mapa nome->hex fica em [catalogoCoresEtiquetasProvider].
+final etiquetasCatalogoProvider =
+    FutureProvider.autoDispose<List<Etiqueta>>((ref) {
+      return ref.watch(centralDataSourceProvider).listarEtiquetas();
+    });
+
+/// Mapa nome->cor(hex) das etiquetas, para colorir os chips na lista/cabecalho.
+/// Vazio enquanto carrega ou em erro (o chip cai na cor padrao).
+final catalogoCoresEtiquetasProvider = Provider.autoDispose<Map<String, String>>(
+  (ref) {
+    final cat = ref.watch(etiquetasCatalogoProvider);
+    return cat.maybeWhen(
+      data: (lista) => {
+        for (final e in lista)
+          if (e.cor != null && e.cor!.isNotEmpty) e.nome: e.cor!,
+      },
+      orElse: () => const {},
+    );
+  },
+);
+
+/// Departamentos ativos do tenant (destino de transferencia).
+final departamentosProvider =
+    FutureProvider.autoDispose<List<Departamento>>((ref) {
+      return ref.watch(centralDataSourceProvider).listarDepartamentos();
+    });

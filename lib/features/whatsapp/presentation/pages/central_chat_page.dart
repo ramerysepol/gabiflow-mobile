@@ -2,17 +2,24 @@ import 'dart:async';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:record/record.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../data/models/central_models.dart';
 import '../providers/central_providers.dart';
+import 'contato_detalhes_page.dart';
 import '../widgets/central_media_widgets.dart';
+import '../widgets/central_visuals.dart';
+import '../widgets/tags_editor_sheet.dart';
+import '../widgets/template_picker_sheet.dart';
+import '../widgets/transfer_sheet.dart';
 
 /// Chat de uma conversa — visual familiar do WhatsApp: fundo bege/escuro,
 /// bolhas verde (enviada) e branca (recebida), ticks de status e separadores
@@ -24,12 +31,16 @@ class CentralChatPage extends ConsumerStatefulWidget {
     this.nomeContato,
     this.telefone,
     this.fotoUrl,
+    this.canal,
+    this.contaCanal,
   });
 
   final int conversationId;
   final String? nomeContato;
   final String? telefone;
   final String? fotoUrl;
+  final String? canal; // whatsapp | instagram | messenger | webchat
+  final String? contaCanal; // channel_account_id ('app' distingue App de Site)
 
   @override
   ConsumerState<CentralChatPage> createState() => _CentralChatPageState();
@@ -39,12 +50,41 @@ class _CentralChatPageState extends ConsumerState<CentralChatPage> {
   final _inputController = TextEditingController();
   final _scrollController = ScrollController();
   bool _sheetRespostasAberta = false;
+  bool _telefoneCopiado = false;
+  bool _nomeCopiado = false;
+  Mensagem? _respondendo; // mensagem sendo citada na resposta
+
+  String get _canalEfetivo =>
+      canalEfetivo(widget.canal ?? 'whatsapp', widget.contaCanal);
+  bool get _ehAppOuSite =>
+      canalAppOuSite(widget.canal ?? 'whatsapp', widget.contaCanal);
+
+  // Renderizar as bolhas so' depois da transicao de rota: construir a lista
+  // (com midia, avatares...) no meio da animacao derrubava frames e as
+  // mensagens "pipocavam" durante o slide.
+  bool _transicaoConcluida = false;
 
   @override
   void initState() {
     super.initState();
     // Digitar "/" no campo vazio abre as respostas rapidas (como no WhatsApp).
     _inputController.addListener(_aoDigitarBarra);
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final anim = ModalRoute.of(context)?.animation;
+      if (anim == null || anim.isCompleted) {
+        setState(() => _transicaoConcluida = true);
+        return;
+      }
+      void aoTerminar(AnimationStatus status) {
+        if (status != AnimationStatus.completed) return;
+        anim.removeStatusListener(aoTerminar);
+        if (mounted) setState(() => _transicaoConcluida = true);
+      }
+
+      anim.addStatusListener(aoTerminar);
+    });
   }
 
   void _aoDigitarBarra() {
@@ -76,13 +116,186 @@ class _CentralChatPageState extends ConsumerState<CentralChatPage> {
     super.dispose();
   }
 
+  /// Copia o telefone sem o DDI 55 (mesma regra do ChatHeader.tsx da web).
+  Future<void> _copiarTelefone() async {
+    if (widget.telefone == null) return;
+    final digitos = widget.telefone!.replaceAll(RegExp(r'\D'), '');
+    final semDdi = digitos.startsWith('55') ? digitos.substring(2) : digitos;
+    await Clipboard.setData(ClipboardData(text: semDdi));
+    if (!mounted) return;
+    setState(() => _telefoneCopiado = true);
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Telefone copiado!'),
+        duration: Duration(milliseconds: 1500),
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+    Future.delayed(const Duration(milliseconds: 1500), () {
+      if (mounted) setState(() => _telefoneCopiado = false);
+    });
+  }
+
+  /// A conversa correspondente na lista carregada (pode ser null se veio por
+  /// deep-link e a lista ainda nao tem o item).
+  ConversaResumo? _conversaDaLista() {
+    for (final c in ref.read(conversasProvider).conversas) {
+      if (c.id == widget.conversationId) return c;
+    }
+    return null;
+  }
+
+  Future<void> _assumir() async {
+    final userId = ref.read(authProvider).user?.id;
+    if (userId == null) return;
+    try {
+      await ref
+          .read(centralDataSourceProvider)
+          .assumirConversa(widget.conversationId, userId);
+      ref.read(conversasProvider.notifier).carregar(silencioso: true);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Conversa assumida por você.')),
+      );
+      setState(() {}); // esconde o banner
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Não foi possível assumir: $e')),
+        );
+      }
+    }
+  }
+
+  /// Copia o nome do contato — util quando a conversa vem do app/site, para
+  /// localizar o estudante no backoffice (paridade com o ChatHeader.tsx da web).
+  Future<void> _copiarNome() async {
+    final nome = widget.nomeContato?.trim();
+    if (nome == null || nome.isEmpty) return;
+    await Clipboard.setData(ClipboardData(text: nome));
+    if (!mounted) return;
+    setState(() => _nomeCopiado = true);
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Nome copiado!'),
+        duration: Duration(milliseconds: 1500),
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+    Future.delayed(const Duration(milliseconds: 1500), () {
+      if (mounted) setState(() => _nomeCopiado = false);
+    });
+  }
+
+  Future<void> _selecionarTemplate() async {
+    final escolhido = await TemplatePickerSheet.show(context);
+    if (escolhido == null || !mounted) return;
+    final ok = await ref
+        .read(chatProvider(widget.conversationId).notifier)
+        .enviarTemplateMeta(
+          metaTemplateName: escolhido.templateName,
+          metaTemplateLanguage: escolhido.language,
+          templateVariables: escolhido.templateVariables,
+        );
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          ok
+              ? 'Template enviado.'
+              : 'Falha ao enviar template. Tente novamente.',
+        ),
+      ),
+    );
+  }
+
   Future<void> _enviar() async {
     final texto = _inputController.text;
     if (texto.trim().isEmpty) return;
     _inputController.clear();
+    final ctx = _respondendo?.id;
+    if (_respondendo != null) setState(() => _respondendo = null);
     await ref
         .read(chatProvider(widget.conversationId).notifier)
-        .enviarTexto(texto);
+        .enviarTexto(texto, contextMessageId: (ctx != null && ctx > 0) ? ctx : null);
+  }
+
+  void _responderMensagem(Mensagem m) {
+    setState(() => _respondendo = m);
+    FocusScope.of(context).requestFocus(FocusNode());
+  }
+
+  Future<void> _excluirMensagem(Mensagem m) async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Excluir mensagem'),
+        content: const Text(
+            'A mensagem some da central. O destinatário continua vendo (o '
+            'WhatsApp não permite apagar no aparelho dele).'),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.of(ctx).pop(false),
+              child: const Text('Cancelar')),
+          FilledButton(
+              onPressed: () => Navigator.of(ctx).pop(true),
+              child: const Text('Excluir')),
+        ],
+      ),
+    );
+    if (ok != true || m.id < 0) return;
+    await ref
+        .read(chatProvider(widget.conversationId).notifier)
+        .excluir(m.id);
+  }
+
+  Future<void> _encaminharMensagem(Mensagem m) async {
+    if (m.id < 0) return;
+    final ds = ref.read(centralDataSourceProvider);
+    // Escolhe uma conversa de destino entre as abertas.
+    final conversas = ref.read(conversasProvider).conversas;
+    final escolhida = await showModalBottomSheet<ConversaResumo>(
+      context: context,
+      showDragHandle: true,
+      isScrollControlled: true,
+      useSafeArea: true,
+      builder: (ctx) => SafeArea(
+        child: ListView(
+          shrinkWrap: true,
+          children: [
+            const Padding(
+              padding: EdgeInsets.all(16),
+              child: Text('Encaminhar para',
+                  style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
+            ),
+            ...conversas
+                .where((c) => c.id != widget.conversationId)
+                .map((c) => ListTile(
+                      leading: const CircleAvatar(
+                          child: Icon(Icons.person_rounded, size: 20)),
+                      title: Text(c.displayName),
+                      subtitle: Text(c.lastMessage ?? '',
+                          maxLines: 1, overflow: TextOverflow.ellipsis),
+                      onTap: () => Navigator.of(ctx).pop(c),
+                    )),
+          ],
+        ),
+      ),
+    );
+    if (escolhida == null || !mounted) return;
+    try {
+      await ds.encaminharMensagem(widget.conversationId, m.id,
+          paraConversa: escolhida.id);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Encaminhada para ${escolhida.displayName}.')),
+      );
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text('Falha ao encaminhar: $e')));
+      }
+    }
   }
 
   Future<void> _abrirAnexos() async {
@@ -120,8 +333,10 @@ class _CentralChatPageState extends ConsumerState<CentralChatPage> {
             ListTile(
               leading: const CircleAvatar(
                 backgroundColor: Color(0xFF607D8B),
-                child:
-                    Icon(Icons.insert_drive_file_rounded, color: Colors.white),
+                child: Icon(
+                  Icons.insert_drive_file_rounded,
+                  color: Colors.white,
+                ),
               ),
               title: const Text('Documento'),
               onTap: () => Navigator.of(ctx).pop('documento'),
@@ -149,15 +364,22 @@ class _CentralChatPageState extends ConsumerState<CentralChatPage> {
       switch (escolha) {
         case 'camera':
           arquivo = await picker.pickImage(
-              source: ImageSource.camera, imageQuality: 82, maxWidth: 1920);
+            source: ImageSource.camera,
+            imageQuality: 82,
+            maxWidth: 1920,
+          );
         case 'galeria':
           arquivo = await picker.pickImage(
-              source: ImageSource.gallery, imageQuality: 82, maxWidth: 1920);
+            source: ImageSource.gallery,
+            imageQuality: 82,
+            maxWidth: 1920,
+          );
         case 'video':
           tipo = 'video';
           arquivo = await picker.pickVideo(
-              source: ImageSource.gallery,
-              maxDuration: const Duration(minutes: 3));
+            source: ImageSource.gallery,
+            maxDuration: const Duration(minutes: 3),
+          );
       }
       if (arquivo == null) return;
       caminho = arquivo.path;
@@ -165,84 +387,74 @@ class _CentralChatPageState extends ConsumerState<CentralChatPage> {
     }
     if (caminho == null || !mounted) return;
 
-    await ref.read(chatProvider(widget.conversationId).notifier).enviarMidia(
-          filePath: caminho,
-          tipo: tipo,
-          filename: nome,
-        );
+    await ref
+        .read(chatProvider(widget.conversationId).notifier)
+        .enviarMidia(filePath: caminho, tipo: tipo, filename: nome);
   }
 
   Future<void> _transferirConversa() async {
-    final ds = ref.read(centralDataSourceProvider);
-    List<AtendenteResumo> atendentes;
+    final r = await TransferSheet.mostrar(context);
+    if (r == null || !mounted) return;
     try {
-      atendentes = await ds.listarAtendentes();
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Falha ao carregar atendentes: $e')));
-      }
-      return;
-    }
-    if (!mounted) return;
-    final meuId = ref.read(authProvider).user?.id;
-    final opcoes = atendentes.where((a) => a.id != meuId).toList();
-    if (opcoes.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-          content: Text('Nenhum outro atendente disponível.')));
-      return;
-    }
-    final escolhido = await showModalBottomSheet<AtendenteResumo>(
-      context: context,
-      showDragHandle: true,
-      builder: (ctx) => SafeArea(
-        child: ListView(
-          shrinkWrap: true,
-          children: [
-            const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-              child: Text('Transferir para',
-                  style: TextStyle(fontWeight: FontWeight.w700)),
-            ),
-            ...opcoes.map((a) => ListTile(
-                  leading: const CircleAvatar(
-                      child: Icon(Icons.person_rounded, size: 20)),
-                  title: Text(a.nome),
-                  onTap: () => Navigator.of(ctx).pop(a),
-                )),
-          ],
-        ),
-      ),
-    );
-    if (escolhido == null || !mounted) return;
-    try {
-      await ds.transferirConversa(widget.conversationId,
-          paraUsuario: escolhido.id);
+      await ref.read(centralDataSourceProvider).transferirConversa(
+            widget.conversationId,
+            paraUsuario: r.paraUsuario,
+            paraDepartamento: r.paraDepartamento,
+            motivo: r.motivo,
+            notas: r.notas,
+          );
       if (!mounted) return;
+      final destino = r.nomeDestino ?? 'destino';
       ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Transferida para ${escolhido.nome}.')));
+        SnackBar(content: Text('Transferida para $destino.')),
+      );
       if (context.canPop()) context.pop();
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text('Falha ao transferir: $e')));
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Falha ao transferir: $e')));
       }
     }
   }
 
-  Future<void> _encerrarConversa() async {
-    final motivoCtrl = TextEditingController(text: 'Resolvido');
-    final confirmar = await showDialog<bool>(
+  Future<void> _agendarMensagem() async {
+    final msgCtrl = TextEditingController();
+    final now = DateTime.now();
+    final data = await showDatePicker(
+      context: context,
+      firstDate: now,
+      lastDate: now.add(const Duration(days: 365)),
+      initialDate: now.add(const Duration(hours: 1)),
+    );
+    if (data == null || !mounted) return;
+    final hora = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay.fromDateTime(now.add(const Duration(hours: 1))),
+    );
+    if (hora == null || !mounted) return;
+    final quando =
+        DateTime(data.year, data.month, data.day, hora.hour, hora.minute);
+    final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Encerrar conversa'),
-        content: SizedBox(
-          width: 320,
-          child: TextField(
-            controller: motivoCtrl,
-            decoration: const InputDecoration(
-                labelText: 'Motivo', border: OutlineInputBorder()),
-          ),
+        title: const Text('Agendar mensagem'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Envio em ${DateFormat('dd/MM/yyyy HH:mm').format(quando)}'),
+            const SizedBox(height: 12),
+            TextField(
+              controller: msgCtrl,
+              minLines: 2,
+              maxLines: 4,
+              decoration: const InputDecoration(
+                labelText: 'Mensagem',
+                border: OutlineInputBorder(),
+              ),
+            ),
+          ],
         ),
         actions: [
           TextButton(
@@ -250,50 +462,225 @@ class _CentralChatPageState extends ConsumerState<CentralChatPage> {
               child: const Text('Cancelar')),
           FilledButton(
               onPressed: () => Navigator.of(ctx).pop(true),
-              child: const Text('Encerrar')),
+              child: const Text('Agendar')),
         ],
       ),
     );
-    if (confirmar != true || !mounted) return;
+    if (ok != true || !mounted || msgCtrl.text.trim().isEmpty) return;
     try {
-      await ref
-          .read(centralDataSourceProvider)
-          .encerrarConversa(widget.conversationId, motivo: motivoCtrl.text);
+      await ref.read(centralDataSourceProvider).agendarMensagem(
+            widget.conversationId,
+            mensagem: msgCtrl.text.trim(),
+            quando: quando,
+          );
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Conversa encerrada.')));
-      if (context.canPop()) context.pop();
+        SnackBar(
+            content: Text(
+                'Mensagem agendada para ${DateFormat('dd/MM HH:mm').format(quando)}.')),
+      );
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text('Falha ao encerrar: $e')));
+            .showSnackBar(SnackBar(content: Text('Falha ao agendar: $e')));
       }
     }
   }
 
-  Future<void> _arquivarConversa() async {
+  Future<void> _exportarPdf() async {
     try {
-      await ref
-          .read(centralDataSourceProvider)
-          .arquivarConversa(widget.conversationId);
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Conversa arquivada.')));
-      if (context.canPop()) context.pop();
+      final url =
+          await ref.read(centralDataSourceProvider).urlExportarPdf(widget.conversationId);
+      final ok = await launchUrl(Uri.parse(url),
+          mode: LaunchMode.externalApplication);
+      if (!ok && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Não foi possível abrir o PDF.')));
+      }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text('Falha ao arquivar: $e')));
+            .showSnackBar(SnackBar(content: Text('Falha ao exportar: $e')));
+      }
+    }
+  }
+
+  void _usarSugestao(String s) {
+    _inputController.text = s;
+    _inputController.selection =
+        TextSelection.collapsed(offset: _inputController.text.length);
+  }
+
+  Future<void> _sugestaoIA() async {
+    // Sem dialog de loading separado (o pop dele empurrava a propria pagina
+    // fora). Abre o sheet direto e carrega DENTRO dele com FutureBuilder.
+    final future = ref
+        .read(centralDataSourceProvider)
+        .sugestoesIA(widget.conversationId);
+    await showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      isScrollControlled: true,
+      useSafeArea: true,
+      builder: (ctx) => SafeArea(
+        child: ConstrainedBox(
+          constraints: BoxConstraints(
+            maxHeight: MediaQuery.sizeOf(ctx).height * 0.7,
+          ),
+          child: FutureBuilder<List<String>>(
+            future: future,
+            builder: (ctx, snap) {
+              if (snap.connectionState == ConnectionState.waiting) {
+                return const Padding(
+                  padding: EdgeInsets.all(32),
+                  child: Center(child: CircularProgressIndicator()),
+                );
+              }
+              final erro = snap.hasError;
+              final sugestoes = snap.data ?? const <String>[];
+              return ListView(
+                shrinkWrap: true,
+                padding: const EdgeInsets.all(8),
+                children: [
+                  const Padding(
+                    padding: EdgeInsets.all(8),
+                    child: Row(children: [
+                      Icon(Icons.auto_awesome_rounded,
+                          color: Colors.deepPurple),
+                      SizedBox(width: 8),
+                      Text('Sugestões da IA',
+                          style: TextStyle(
+                              fontWeight: FontWeight.w700, fontSize: 16)),
+                    ]),
+                  ),
+                  if (erro)
+                    const Padding(
+                      padding: EdgeInsets.all(16),
+                      child: Text('Não foi possível gerar sugestões agora.'),
+                    )
+                  else if (sugestoes.isEmpty)
+                    const Padding(
+                      padding: EdgeInsets.all(16),
+                      child: Text('Sem sugestões no momento.'),
+                    )
+                  else
+                    ...sugestoes.map((s) => Card(
+                          child: ListTile(
+                            title: Text(s),
+                            trailing: const Icon(Icons.north_east_rounded,
+                                size: 18),
+                            onTap: () {
+                              Navigator.of(ctx).pop();
+                              _usarSugestao(s);
+                            },
+                          ),
+                        )),
+                ],
+              );
+            },
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _editarEtiquetas() async {
+    final novas = await TagsEditorSheet.mostrar(context, widget.conversationId);
+    if (novas == null || !mounted) return;
+    // Atualiza a lista de conversas ao voltar (os chips refletem a mudanca).
+    ref.read(conversasProvider.notifier).carregar(silencioso: true);
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Etiquetas atualizadas.')),
+    );
+  }
+
+  Future<void> _encerrarConversa() async {
+    final notasCtrl = TextEditingController();
+    String resolucao = 'resolved';
+    const opcoes = [
+      ('resolved', 'Resolvido'),
+      ('unresolved', 'Não resolvido'),
+      ('inactive', 'Inativo / sem retorno'),
+    ];
+    final confirmar = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setLocal) => AlertDialog(
+          title: const Text('Encerrar atendimento'),
+          content: SizedBox(
+            width: 340,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('Resolução',
+                    style: TextStyle(fontWeight: FontWeight.w600)),
+                const SizedBox(height: 6),
+                ...opcoes.map((o) => RadioListTile<String>(
+                      dense: true,
+                      contentPadding: EdgeInsets.zero,
+                      value: o.$1,
+                      groupValue: resolucao,
+                      onChanged: (v) => setLocal(() => resolucao = v!),
+                      title: Text(o.$2),
+                    )),
+                const SizedBox(height: 8),
+                TextField(
+                  controller: notasCtrl,
+                  minLines: 2,
+                  maxLines: 4,
+                  decoration: const InputDecoration(
+                    labelText: 'Observações (opcional)',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(false),
+              child: const Text('Cancelar'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(ctx).pop(true),
+              child: const Text('Encerrar'),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (confirmar != true || !mounted) return;
+    final motivoPorResolucao = {
+      'resolved': 'Resolvido',
+      'unresolved': 'Não resolvido',
+      'inactive': 'Inativo / sem retorno',
+    };
+    try {
+      await ref.read(centralDataSourceProvider).encerrarConversa(
+            widget.conversationId,
+            motivo: motivoPorResolucao[resolucao],
+            resolucao: resolucao,
+            notas: notasCtrl.text,
+          );
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Conversa encerrada.')));
+      if (context.canPop()) context.pop();
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Falha ao encerrar: $e')));
       }
     }
   }
 
   Future<void> _enviarAudio(String caminho) async {
-    await ref.read(chatProvider(widget.conversationId).notifier).enviarMidia(
-          filePath: caminho,
-          tipo: 'audio',
-          filename: 'voz.m4a',
-        );
+    await ref
+        .read(chatProvider(widget.conversationId).notifier)
+        .enviarMidia(filePath: caminho, tipo: 'audio', filename: 'voz.m4a');
   }
 
   Future<void> _abrirRespostasRapidas({
@@ -343,28 +730,112 @@ class _CentralChatPageState extends ConsumerState<CentralChatPage> {
               backgroundColor: const Color(0xFF25D366).withValues(alpha: 0.2),
               foregroundImage:
                   (widget.fotoUrl != null && widget.fotoUrl!.startsWith('http'))
-                      ? NetworkImage(widget.fotoUrl!)
-                      : null,
-              onForegroundImageError:
-                  widget.fotoUrl != null ? (_, __) {} : null,
-              child: const Icon(Icons.person_rounded,
-                  size: 20, color: Color(0xFF128C7E)),
+                  ? NetworkImage(widget.fotoUrl!)
+                  : null,
+              onForegroundImageError: widget.fotoUrl != null
+                  ? (_, __) {}
+                  : null,
+              child: const Icon(
+                Icons.person_rounded,
+                size: 20,
+                color: Color(0xFF128C7E),
+              ),
             ),
             const SizedBox(width: 10),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    widget.nomeContato ?? 'Conversa',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                        fontSize: 16, fontWeight: FontWeight.w700),
+                  Row(
+                    children: [
+                      Flexible(
+                        child: Text(
+                          widget.nomeContato ?? 'Conversa',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                      // Copiar nome: util p/ conversas do app/site (localizar o
+                      // estudante no backoffice), como no ChatHeader.tsx da web.
+                      if (_ehAppOuSite)
+                        InkWell(
+                          onTap: _copiarNome,
+                          borderRadius: BorderRadius.circular(12),
+                          child: Padding(
+                            padding: const EdgeInsets.all(4),
+                            child: Icon(
+                              _nomeCopiado
+                                  ? Icons.check_rounded
+                                  : Icons.copy_rounded,
+                              size: 14,
+                              color: _nomeCopiado
+                                  ? const Color(0xFF25D366)
+                                  : Theme.of(context)
+                                      .textTheme
+                                      .bodySmall
+                                      ?.color
+                                      ?.withValues(alpha: 0.7),
+                            ),
+                          ),
+                        ),
+                    ],
                   ),
-                  if (widget.telefone != null)
-                    Text(widget.telefone!,
-                        style: const TextStyle(fontSize: 12)),
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      CanalBadge(_canalEfetivo, size: 11, comLabel: true),
+                      if (widget.telefone != null &&
+                          widget.telefone!.isNotEmpty) ...[
+                        const SizedBox(width: 8),
+                        Flexible(
+                          child: GestureDetector(
+                            onTap: _copiarTelefone,
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Flexible(
+                                  child: Text(
+                                    widget.telefone!,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(fontSize: 12),
+                                  ),
+                                ),
+                                const SizedBox(width: 4),
+                                Icon(
+                                  _telefoneCopiado
+                                      ? Icons.check_rounded
+                                      : Icons.copy_rounded,
+                                  size: 12,
+                                  color: _telefoneCopiado
+                                      ? const Color(0xFF25D366)
+                                      : Theme.of(context)
+                                          .textTheme
+                                          .bodySmall
+                                          ?.color
+                                          ?.withValues(alpha: 0.6),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
+                      if (estado.janelaExpirada) ...[
+                        const SizedBox(width: 6),
+                        const Text(
+                          'Janela expirada',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.redAccent,
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
                 ],
               ),
             ),
@@ -372,20 +843,21 @@ class _CentralChatPageState extends ConsumerState<CentralChatPage> {
         ),
         actions: [
           IconButton(
-            tooltip: 'Assumir conversa',
-            icon: const Icon(Icons.support_agent_rounded),
-            onPressed: () async {
-              final userId = ref.read(authProvider).user?.id;
-              if (userId == null) return;
-              final ok = await ref
-                  .read(chatProvider(widget.conversationId).notifier)
-                  .assumir(userId);
-              if (!context.mounted) return;
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text(ok
-                      ? 'Conversa assumida por você.'
-                      : 'Não foi possível assumir a conversa.'),
+            tooltip: 'Sugestão da IA',
+            icon: const Icon(Icons.auto_awesome_rounded),
+            onPressed: _sugestaoIA,
+          ),
+          IconButton(
+            tooltip: 'Informações',
+            icon: const Icon(Icons.info_outline_rounded),
+            onPressed: () {
+              final base = _conversaDaLista();
+              Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder: (_) => ContatoDetalhesPage(
+                    conversationId: widget.conversationId,
+                    base: base,
+                  ),
                 ),
               );
             },
@@ -394,15 +866,46 @@ class _CentralChatPageState extends ConsumerState<CentralChatPage> {
             tooltip: 'Mais opções',
             onSelected: (acao) {
               switch (acao) {
+                case 'etiquetas':
+                  _editarEtiquetas();
+                case 'agendar':
+                  _agendarMensagem();
+                case 'exportar':
+                  _exportarPdf();
                 case 'transferir':
                   _transferirConversa();
                 case 'encerrar':
                   _encerrarConversa();
-                case 'arquivar':
-                  _arquivarConversa();
               }
             },
             itemBuilder: (_) => const [
+              PopupMenuItem(
+                value: 'etiquetas',
+                child: ListTile(
+                  dense: true,
+                  contentPadding: EdgeInsets.zero,
+                  leading: Icon(Icons.label_outline_rounded),
+                  title: Text('Etiquetas'),
+                ),
+              ),
+              PopupMenuItem(
+                value: 'agendar',
+                child: ListTile(
+                  dense: true,
+                  contentPadding: EdgeInsets.zero,
+                  leading: Icon(Icons.schedule_send_rounded),
+                  title: Text('Agendar mensagem'),
+                ),
+              ),
+              PopupMenuItem(
+                value: 'exportar',
+                child: ListTile(
+                  dense: true,
+                  contentPadding: EdgeInsets.zero,
+                  leading: Icon(Icons.picture_as_pdf_rounded),
+                  title: Text('Exportar PDF'),
+                ),
+              ),
               PopupMenuItem(
                 value: 'transferir',
                 child: ListTile(
@@ -421,21 +924,45 @@ class _CentralChatPageState extends ConsumerState<CentralChatPage> {
                   title: Text('Encerrar conversa'),
                 ),
               ),
-              PopupMenuItem(
-                value: 'arquivar',
-                child: ListTile(
-                  dense: true,
-                  contentPadding: EdgeInsets.zero,
-                  leading: Icon(Icons.archive_outlined),
-                  title: Text('Arquivar'),
-                ),
-              ),
             ],
           ),
         ],
       ),
       body: Column(
         children: [
+          Builder(builder: (context) {
+            final conv = _conversaDaLista();
+            final meuId = ref.watch(authProvider).user?.id;
+            // Mostra o convite a assumir quando a conversa nao esta atribuida a
+            // mim (igual ao web: ao entrar, pergunta se quer assumir).
+            final naoAtribuida = conv != null && conv.assignedTo != meuId;
+            if (!naoAtribuida) return const SizedBox.shrink();
+            return Material(
+              color: const Color(0xFF25D366).withValues(alpha: 0.12),
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(12, 8, 8, 8),
+                child: Row(
+                  children: [
+                    const Icon(Icons.support_agent_rounded,
+                        color: Color(0xFF128C7E), size: 20),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        conv.assignedTo == null
+                            ? 'Esta conversa ainda não foi assumida.'
+                            : 'Atribuída a ${conv.assignedToName ?? 'outro atendente'}.',
+                        style: const TextStyle(fontSize: 12.5),
+                      ),
+                    ),
+                    TextButton(
+                      onPressed: _assumir,
+                      child: const Text('Assumir'),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          }),
           if (estado.erro != null)
             MaterialBanner(
               backgroundColor: Colors.red.shade50,
@@ -455,7 +982,9 @@ class _CentralChatPageState extends ConsumerState<CentralChatPage> {
               ],
             ),
           Expanded(
-            child: estado.carregando && estado.mensagens.isEmpty
+            child: !_transicaoConcluida
+                ? const SizedBox.expand()
+                : estado.carregando && estado.mensagens.isEmpty
                 ? const Center(child: CircularProgressIndicator())
                 // Lista invertida (padrao de chat): ja abre ancorada na
                 // ultima mensagem — sem pulo — e mensagens novas nao
@@ -463,14 +992,17 @@ class _CentralChatPageState extends ConsumerState<CentralChatPage> {
                 : ListView.builder(
                     controller: _scrollController,
                     reverse: true,
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 8,
+                    ),
                     itemCount: estado.mensagens.length,
                     itemBuilder: (context, i) {
                       final real = estado.mensagens.length - 1 - i;
                       final m = estado.mensagens[real];
-                      final anterior =
-                          real > 0 ? estado.mensagens[real - 1] : null;
+                      final anterior = real > 0
+                          ? estado.mensagens[real - 1]
+                          : null;
                       return Column(
                         children: [
                           if (_diaDiferente(anterior, m))
@@ -478,23 +1010,125 @@ class _CentralChatPageState extends ConsumerState<CentralChatPage> {
                           _Bolha(
                             mensagem: m,
                             isDark: isDark,
-                            corMinha:
-                                isDark ? _bolhaMinhaEscuro : _bolhaMinhaClaro,
+                            corMinha: isDark
+                                ? _bolhaMinhaEscuro
+                                : _bolhaMinhaClaro,
                             tickAzul: _tickAzul,
+                            onResponder: _responderMensagem,
+                            onEncaminhar: _encaminharMensagem,
+                            onExcluir: m.minha ? _excluirMensagem : null,
                           ),
                         ],
                       );
                     },
                   ),
           ),
-          _BarraInput(
-            controller: _inputController,
-            enviando: estado.enviando,
-            onEnviar: _enviar,
-            onRespostasRapidas: _abrirRespostasRapidas,
-            onAnexar: _abrirAnexos,
-            onEnviarAudio: _enviarAudio,
-          ),
+          if (!estado.janelaExpirada &&
+              estado.janela?.status == 'expiring_soon')
+            Container(
+              width: double.infinity,
+              color: Colors.amber.withValues(alpha: 0.18),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+              child: const Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    Icons.access_time_rounded,
+                    size: 13,
+                    color: Color(0xFFB45309),
+                  ),
+                  SizedBox(width: 6),
+                  Text(
+                    'Janela expira em breve',
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: Color(0xFFB45309),
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          if (estado.janelaExpirada)
+            Container(
+              width: double.infinity,
+              color: Colors.amber.withValues(alpha: 0.15),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              child: const Row(
+                children: [
+                  Icon(
+                    Icons.warning_amber_rounded,
+                    size: 16,
+                    color: Color(0xFFB45309),
+                  ),
+                  SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Janela de 24h expirada. Use um template para enviar '
+                      'mensagem.',
+                      style: TextStyle(fontSize: 12, color: Color(0xFFB45309)),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          if (_respondendo != null)
+            Container(
+              width: double.infinity,
+              color: (isDark ? Colors.white : Colors.black).withValues(alpha: 0.05),
+              padding: const EdgeInsets.fromLTRB(12, 8, 8, 8),
+              child: Row(
+                children: [
+                  Container(width: 3, height: 34, color: const Color(0xFF25D366)),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          _respondendo!.minha ? 'Você' : 'Contato',
+                          style: const TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w700,
+                              color: Color(0xFF25D366)),
+                        ),
+                        Text(
+                          _respondendo!.previewTexto,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(fontSize: 12),
+                        ),
+                      ],
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.close_rounded, size: 18),
+                    onPressed: () => setState(() => _respondendo = null),
+                  ),
+                ],
+              ),
+            ),
+          estado.janelaExpirada
+              ? SafeArea(
+                  top: false,
+                  child: Padding(
+                    padding: const EdgeInsets.all(12),
+                    child: FilledButton.icon(
+                      onPressed: _selecionarTemplate,
+                      icon: const Icon(Icons.description_outlined),
+                      label: const Text('Selecionar Template'),
+                    ),
+                  ),
+                )
+              : _BarraInput(
+                  controller: _inputController,
+                  enviando: estado.enviando,
+                  onEnviar: _enviar,
+                  onRespostasRapidas: _abrirRespostasRapidas,
+                  onAnexar: _abrirAnexos,
+                  onEnviarAudio: _enviarAudio,
+                ),
         ],
       ),
     );
@@ -522,6 +1156,34 @@ class _RespostasRapidasSheetState
     extends ConsumerState<_RespostasRapidasSheet> {
   String _busca = '';
 
+  Future<void> _excluirResposta(int id) async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Excluir resposta rápida'),
+        content: const Text('Tem certeza que deseja excluir?'),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.of(ctx).pop(false),
+              child: const Text('Cancelar')),
+          FilledButton(
+              onPressed: () => Navigator.of(ctx).pop(true),
+              child: const Text('Excluir')),
+        ],
+      ),
+    );
+    if (ok != true) return;
+    try {
+      await ref.read(centralDataSourceProvider).excluirRespostaRapida(id);
+      ref.invalidate(respostasRapidasProvider);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text('Falha ao excluir: $e')));
+      }
+    }
+  }
+
   Future<void> _cadastrar() async {
     final atalhoCtrl = TextEditingController();
     final conteudoCtrl = TextEditingController();
@@ -532,28 +1194,28 @@ class _RespostasRapidasSheetState
         content: SizedBox(
           width: 320,
           child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: atalhoCtrl,
-              decoration: const InputDecoration(
-                labelText: 'Atalho',
-                hintText: 'ex.: saudacao',
-                prefixText: '/',
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: atalhoCtrl,
+                decoration: const InputDecoration(
+                  labelText: 'Atalho',
+                  hintText: 'ex.: saudacao',
+                  prefixText: '/',
+                ),
               ),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: conteudoCtrl,
-              minLines: 3,
-              maxLines: 6,
-              decoration: const InputDecoration(
-                labelText: 'Mensagem',
-                hintText: 'Texto que será enviado',
-                border: OutlineInputBorder(),
+              const SizedBox(height: 12),
+              TextField(
+                controller: conteudoCtrl,
+                minLines: 3,
+                maxLines: 6,
+                decoration: const InputDecoration(
+                  labelText: 'Mensagem',
+                  hintText: 'Texto que será enviado',
+                  border: OutlineInputBorder(),
+                ),
               ),
-            ),
-          ],
+            ],
           ),
         ),
         actions: [
@@ -584,8 +1246,9 @@ class _RespostasRapidasSheetState
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text('Falha ao cadastrar: $e')));
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Falha ao cadastrar: $e')));
       }
     }
   }
@@ -638,34 +1301,50 @@ class _RespostasRapidasSheetState
           ),
           Expanded(
             child: respostas.when(
-              loading: () =>
-                  const Center(child: CircularProgressIndicator()),
+              loading: () => const Center(child: CircularProgressIndicator()),
               error: (e, _) => Center(
-                child: Text('Falha ao carregar respostas rápidas.\n$e',
-                    textAlign: TextAlign.center),
+                child: Text(
+                  'Falha ao carregar respostas rápidas.\n$e',
+                  textAlign: TextAlign.center,
+                ),
               ),
               data: (lista) {
                 final filtradas = _busca.isEmpty
                     ? lista
                     : lista
-                        .where((r) =>
-                            r.titulo.toLowerCase().contains(_busca) ||
-                            r.conteudo.toLowerCase().contains(_busca))
-                        .toList();
+                          .where(
+                            (r) =>
+                                r.titulo.toLowerCase().contains(_busca) ||
+                                r.conteudo.toLowerCase().contains(_busca),
+                          )
+                          .toList();
                 if (filtradas.isEmpty) {
                   return const Center(
-                      child: Text('Nenhuma resposta encontrada.'));
+                    child: Text('Nenhuma resposta encontrada.'),
+                  );
                 }
                 return ListView.builder(
                   itemCount: filtradas.length,
                   itemBuilder: (ctx, i) => ListTile(
-                    leading: const Icon(Icons.bolt_rounded,
-                        color: Color(0xFF25D366)),
-                    title: Text('/${filtradas[i].titulo}',
-                        style:
-                            const TextStyle(fontWeight: FontWeight.w600)),
-                    subtitle: Text(filtradas[i].conteudo,
-                        maxLines: 2, overflow: TextOverflow.ellipsis),
+                    leading: const Icon(
+                      Icons.bolt_rounded,
+                      color: Color(0xFF25D366),
+                    ),
+                    title: Text(
+                      '/${filtradas[i].titulo}',
+                      style: const TextStyle(fontWeight: FontWeight.w600),
+                    ),
+                    subtitle: Text(
+                      filtradas[i].conteudo,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    trailing: IconButton(
+                      icon: const Icon(Icons.delete_outline_rounded,
+                          size: 20, color: Colors.redAccent),
+                      tooltip: 'Excluir',
+                      onPressed: () => _excluirResposta(filtradas[i].id),
+                    ),
                     onTap: () => Navigator.of(ctx).pop(filtradas[i]),
                   ),
                 );
@@ -721,12 +1400,18 @@ class _Bolha extends StatelessWidget {
     required this.isDark,
     required this.corMinha,
     required this.tickAzul,
+    this.onResponder,
+    this.onEncaminhar,
+    this.onExcluir,
   });
 
   final Mensagem mensagem;
   final bool isDark;
   final Color corMinha;
   final Color tickAzul;
+  final void Function(Mensagem)? onResponder;
+  final void Function(Mensagem)? onEncaminhar;
+  final void Function(Mensagem)? onExcluir;
 
   @override
   Widget build(BuildContext context) {
@@ -752,78 +1437,145 @@ class _Bolha extends StatelessWidget {
     final corBolha = minha
         ? corMinha
         : (isDark ? const Color(0xFF202C33) : Colors.white);
-    final corTexto = isDark || !minha && isDark
-        ? Colors.white
-        : Colors.black87;
+    // Fundos das duas bolhas (verde-claro/branco no tema claro,
+    // verde-escuro/cinza-escuro no tema escuro) sempre contrastam do mesmo
+    // jeito com preto/branco — a cor do texto só depende do tema.
+    final corTexto = isDark ? Colors.white : Colors.black87;
 
-    return Align(
-      alignment: minha ? Alignment.centerRight : Alignment.centerLeft,
-      child: Container(
-        margin: const EdgeInsets.symmetric(vertical: 2),
-        padding: const EdgeInsets.fromLTRB(10, 6, 8, 4),
-        constraints: BoxConstraints(
-          maxWidth: MediaQuery.of(context).size.width * 0.78,
-        ),
-        decoration: BoxDecoration(
-          color: corBolha,
-          borderRadius: BorderRadius.only(
-            topLeft: const Radius.circular(10),
-            topRight: const Radius.circular(10),
-            bottomLeft: Radius.circular(minha ? 10 : 2),
-            bottomRight: Radius.circular(minha ? 2 : 10),
+    return GestureDetector(
+      onLongPress: () => _abrirMenuMensagem(context, mensagem),
+      child: Align(
+        alignment: minha ? Alignment.centerRight : Alignment.centerLeft,
+        child: Container(
+          margin: const EdgeInsets.symmetric(vertical: 2),
+          padding: const EdgeInsets.fromLTRB(10, 6, 8, 4),
+          constraints: BoxConstraints(
+            maxWidth: MediaQuery.of(context).size.width * 0.78,
           ),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.06),
-              blurRadius: 1,
-              offset: const Offset(0, 1),
+          decoration: BoxDecoration(
+            color: corBolha,
+            borderRadius: BorderRadius.only(
+              topLeft: const Radius.circular(10),
+              topRight: const Radius.circular(10),
+              bottomLeft: Radius.circular(minha ? 10 : 2),
+              bottomRight: Radius.circular(minha ? 2 : 10),
             ),
-          ],
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.06),
+                blurRadius: 1,
+                offset: const Offset(0, 1),
+              ),
+            ],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (mensagem.quotedMessagePreview != null)
+                Container(
+                  width: double.infinity,
+                  margin: const EdgeInsets.only(bottom: 4),
+                  padding: const EdgeInsets.all(6),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withValues(alpha: 0.06),
+                    borderRadius: BorderRadius.circular(6),
+                    border: const Border(
+                      left: BorderSide(color: Color(0xFF25D366), width: 3),
+                    ),
+                  ),
+                  child: Text(
+                    mensagem.quotedMessagePreview!,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: corTexto.withValues(alpha: 0.7),
+                    ),
+                  ),
+                ),
+              MidiaConteudo(mensagem: mensagem, corTexto: corTexto),
+              const SizedBox(height: 2),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    DateFormat('HH:mm').format(mensagem.createdAt.toLocal()),
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: corTexto.withValues(alpha: 0.55),
+                    ),
+                  ),
+                  if (minha) ...[
+                    const SizedBox(width: 3),
+                    _Ticks(status: mensagem.status, azul: tickAzul),
+                  ],
+                ],
+              ),
+            ],
+          ),
         ),
+      ),
+    );
+  }
+
+  void _abrirMenuMensagem(BuildContext context, Mensagem mensagem) {
+    final ehOtimista = mensagem.id < 0;
+    showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      builder: (ctx) => SafeArea(
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.end,
           mainAxisSize: MainAxisSize.min,
           children: [
-            if (mensagem.quotedMessagePreview != null)
-              Container(
-                width: double.infinity,
-                margin: const EdgeInsets.only(bottom: 4),
-                padding: const EdgeInsets.all(6),
-                decoration: BoxDecoration(
-                  color: Colors.black.withValues(alpha: 0.06),
-                  borderRadius: BorderRadius.circular(6),
-                  border: const Border(
-                    left: BorderSide(color: Color(0xFF25D366), width: 3),
-                  ),
-                ),
-                child: Text(
-                  mensagem.quotedMessagePreview!,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: corTexto.withValues(alpha: 0.7),
-                  ),
-                ),
+            if (onResponder != null && !ehOtimista)
+              ListTile(
+                leading: const Icon(Icons.reply_rounded),
+                title: const Text('Responder'),
+                onTap: () {
+                  Navigator.of(ctx).pop();
+                  onResponder!(mensagem);
+                },
               ),
-            MidiaConteudo(mensagem: mensagem, corTexto: corTexto),
-            const SizedBox(height: 2),
-            Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  DateFormat('HH:mm').format(mensagem.createdAt.toLocal()),
-                  style: TextStyle(
-                    fontSize: 11,
-                    color: corTexto.withValues(alpha: 0.55),
-                  ),
-                ),
-                if (minha) ...[
-                  const SizedBox(width: 3),
-                  _Ticks(status: mensagem.status, azul: tickAzul),
-                ],
-              ],
+            ListTile(
+              leading: const Icon(Icons.copy_rounded),
+              title: const Text('Copiar mensagem'),
+              onTap: () async {
+                Navigator.of(ctx).pop();
+                await Clipboard.setData(
+                  ClipboardData(text: mensagem.previewTexto),
+                );
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Mensagem copiada!'),
+                      duration: Duration(milliseconds: 1500),
+                      behavior: SnackBarBehavior.floating,
+                    ),
+                  );
+                }
+              },
             ),
+            if (onEncaminhar != null && !ehOtimista)
+              ListTile(
+                leading: const Icon(Icons.forward_rounded),
+                title: const Text('Encaminhar'),
+                onTap: () {
+                  Navigator.of(ctx).pop();
+                  onEncaminhar!(mensagem);
+                },
+              ),
+            if (onExcluir != null && !ehOtimista)
+              ListTile(
+                leading: const Icon(Icons.delete_outline_rounded,
+                    color: Colors.redAccent),
+                title: const Text('Excluir',
+                    style: TextStyle(color: Colors.redAccent)),
+                onTap: () {
+                  Navigator.of(ctx).pop();
+                  onExcluir!(mensagem);
+                },
+              ),
           ],
         ),
       ),
@@ -844,21 +1596,33 @@ class _Ticks extends StatelessWidget {
   Widget build(BuildContext context) {
     switch (status) {
       case 'pending':
-        return Icon(Icons.schedule_rounded,
-            size: 14, color: Colors.black.withValues(alpha: 0.4));
+        return Icon(
+          Icons.schedule_rounded,
+          size: 14,
+          color: Colors.black.withValues(alpha: 0.4),
+        );
       case 'sent':
-        return Icon(Icons.done_rounded,
-            size: 15, color: Colors.black.withValues(alpha: 0.45));
+        return Icon(
+          Icons.done_rounded,
+          size: 15,
+          color: Colors.black.withValues(alpha: 0.45),
+        );
       case 'delivered':
-        return Icon(Icons.done_all_rounded,
-            size: 15, color: Colors.black.withValues(alpha: 0.45));
+        return Icon(
+          Icons.done_all_rounded,
+          size: 15,
+          color: Colors.black.withValues(alpha: 0.45),
+        );
       case 'read':
       case 'played':
         return Icon(Icons.done_all_rounded, size: 15, color: azul);
       case 'failed':
       case 'error':
-        return const Icon(Icons.error_outline_rounded,
-            size: 14, color: Colors.red);
+        return const Icon(
+          Icons.error_outline_rounded,
+          size: 14,
+          color: Colors.red,
+        );
       default:
         return const SizedBox.shrink();
     }
@@ -915,8 +1679,11 @@ class _BarraInputState extends State<_BarraInput> {
   Future<void> _comecarGravacao() async {
     if (!await _gravador.hasPermission()) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-            content: Text('Permita o acesso ao microfone para gravar áudio.')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Permita o acesso ao microfone para gravar áudio.'),
+          ),
+        );
       }
       return;
     }
@@ -973,15 +1740,23 @@ class _BarraInputState extends State<_BarraInput> {
                 child: _gravando
                     ? Padding(
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 16, vertical: 12),
+                          horizontal: 16,
+                          vertical: 12,
+                        ),
                         child: Row(
                           children: [
-                            const Icon(Icons.fiber_manual_record_rounded,
-                                color: Colors.red, size: 18),
+                            const Icon(
+                              Icons.fiber_manual_record_rounded,
+                              color: Colors.red,
+                              size: 18,
+                            ),
                             const SizedBox(width: 8),
-                            Text(_tempo,
-                                style: const TextStyle(
-                                    fontWeight: FontWeight.w700)),
+                            Text(
+                              _tempo,
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
                             const Spacer(),
                             Text(
                               'Solte para enviar',
@@ -1007,13 +1782,13 @@ class _BarraInputState extends State<_BarraInput> {
                               controller: widget.controller,
                               minLines: 1,
                               maxLines: 5,
-                              textCapitalization:
-                                  TextCapitalization.sentences,
+                              textCapitalization: TextCapitalization.sentences,
                               decoration: const InputDecoration(
                                 hintText: 'Mensagem',
                                 border: InputBorder.none,
-                                contentPadding:
-                                    EdgeInsets.symmetric(vertical: 10),
+                                contentPadding: EdgeInsets.symmetric(
+                                  vertical: 10,
+                                ),
                               ),
                             ),
                           ),
@@ -1048,8 +1823,11 @@ class _BarraInputState extends State<_BarraInput> {
                                   color: Colors.white,
                                 ),
                               )
-                            : const Icon(Icons.send_rounded,
-                                color: Colors.white, size: 22),
+                            : const Icon(
+                                Icons.send_rounded,
+                                color: Colors.white,
+                                size: 22,
+                              ),
                       ),
                     ),
                   )
@@ -1059,7 +1837,9 @@ class _BarraInputState extends State<_BarraInput> {
                     onLongPressCancel: () => _pararGravacao(enviar: false),
                     onTap: () => ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(
-                        content: Text('Segure o microfone para gravar o áudio.'),
+                        content: Text(
+                          'Segure o microfone para gravar o áudio.',
+                        ),
                         duration: Duration(seconds: 2),
                       ),
                     ),
@@ -1068,9 +1848,7 @@ class _BarraInputState extends State<_BarraInput> {
                       width: _gravando ? 56 : 46,
                       height: _gravando ? 56 : 46,
                       decoration: BoxDecoration(
-                        color: _gravando
-                            ? Colors.red
-                            : const Color(0xFF25D366),
+                        color: _gravando ? Colors.red : const Color(0xFF25D366),
                         shape: BoxShape.circle,
                       ),
                       child: Icon(

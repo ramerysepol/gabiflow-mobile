@@ -14,12 +14,23 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:video_player/video_player.dart';
 
 import '../../data/models/central_models.dart';
+import 'texto_copiavel.dart';
 
 /// Player unico compartilhado: tocar um audio pausa o anterior,
 /// como no WhatsApp.
 class _AudioCentral {
   static final AudioPlayer player = AudioPlayer();
   static final ValueNotifier<String?> urlAtual = ValueNotifier<String?>(null);
+
+  /// Velocidade de reproducao (1x → 1.5x → 2x), como no WhatsApp.
+  static final ValueNotifier<double> velocidade = ValueNotifier<double>(1.0);
+  static void ciclarVelocidade() {
+    const passos = [1.0, 1.5, 2.0];
+    final atual = passos.indexOf(velocidade.value);
+    final proxima = passos[(atual + 1) % passos.length];
+    velocidade.value = proxima;
+    player.setSpeed(proxima);
+  }
 
   /// URLs ja ouvidas ate o fim — ficam 100% azuis (WhatsApp).
   /// Persistido em SharedPreferences pra sobreviver a sair/voltar do chat
@@ -62,8 +73,7 @@ class _AudioCentral {
     _listenerPronto = true;
     player.processingStateStream.listen((s) {
       final url = urlAtual.value;
-      if (s == ProcessingState.completed && url != null &&
-          ouvidos.add(url)) {
+      if (s == ProcessingState.completed && url != null && ouvidos.add(url)) {
         ouvidosVersao.value++;
         _salvarOuvidos();
       }
@@ -78,10 +88,14 @@ class _AudioCentral {
     final uri = Uri.tryParse(url);
     if (uri == null) return url;
     final p = uri.path.toLowerCase();
-    final ehOgg = p.endsWith('.ogg') || p.endsWith('.opus') || p.endsWith('.oga');
+    final ehOgg =
+        p.endsWith('.ogg') || p.endsWith('.opus') || p.endsWith('.oga');
     if (!ehOgg || !uri.path.startsWith('/uploads/whatsapp/')) return url;
     return uri
-        .replace(path: '/api/whatsapp/media/aac', queryParameters: {'src': uri.path})
+        .replace(
+          path: '/api/whatsapp/media/aac',
+          queryParameters: {'src': uri.path},
+        )
         .toString();
   }
 
@@ -143,8 +157,11 @@ class MidiaConteudo extends StatelessWidget {
                 rotulo: mensagem.mediaFilename ?? 'Vídeo',
                 dica: 'Tocar vídeo',
               )
-            : _VideoBolha(url: mensagem.mediaUrl!, caption: mensagem.caption,
-                corTexto: corTexto);
+            : _VideoBolha(
+                url: mensagem.mediaUrl!,
+                caption: mensagem.caption,
+                corTexto: corTexto,
+              );
       case 'audio':
       case 'ptt': // nota de voz vinda da Z-API
       case 'voice':
@@ -166,9 +183,9 @@ class MidiaConteudo extends StatelessWidget {
           dica: 'Abrir documento',
         );
       default:
-        return Text(
-          mensagem.previewTexto,
-          style: TextStyle(fontSize: 15, color: corTexto, height: 1.25),
+        return TextoComCopiaveis(
+          texto: mensagem.previewTexto,
+          corTexto: corTexto,
         );
     }
   }
@@ -205,18 +222,23 @@ class _Imagem extends StatelessWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(Icons.broken_image_rounded,
-                  color: corTexto.withValues(alpha: 0.5)),
-              Text('Falha ao carregar imagem',
-                  style: TextStyle(
-                      fontSize: 11, color: corTexto.withValues(alpha: 0.6))),
+              Icon(
+                Icons.broken_image_rounded,
+                color: corTexto.withValues(alpha: 0.5),
+              ),
+              Text(
+                'Falha ao carregar imagem',
+                style: TextStyle(
+                  fontSize: 11,
+                  color: corTexto.withValues(alpha: 0.6),
+                ),
+              ),
             ],
           ),
         ),
       );
     } else {
-      return Text('📷 Foto',
-          style: TextStyle(fontSize: 15, color: corTexto));
+      return Text('📷 Foto', style: TextStyle(fontSize: 15, color: corTexto));
     }
 
     return Column(
@@ -247,8 +269,7 @@ class _Imagem extends StatelessWidget {
     );
   }
 
-  void _abrirTelaCheia(BuildContext context,
-      {String? url, String? local}) {
+  void _abrirTelaCheia(BuildContext context, {String? url, String? local}) {
     showDialog<void>(
       context: context,
       barrierColor: Colors.black.withValues(alpha: 0.92),
@@ -273,8 +294,11 @@ class _Imagem extends StatelessWidget {
               right: 8,
               child: SafeArea(
                 child: IconButton(
-                  icon: const Icon(Icons.close_rounded,
-                      color: Colors.white, size: 28),
+                  icon: const Icon(
+                    Icons.close_rounded,
+                    color: Colors.white,
+                    size: 28,
+                  ),
                   onPressed: () => Navigator.of(dialogContext).pop(),
                 ),
               ),
@@ -289,11 +313,7 @@ class _Imagem extends StatelessWidget {
 /// Bolha de video estilo WhatsApp: quadro escuro com play; toca DENTRO do
 /// app em tela cheia com controles (chewie/video_player).
 class _VideoBolha extends StatelessWidget {
-  const _VideoBolha({
-    required this.url,
-    required this.corTexto,
-    this.caption,
-  });
+  const _VideoBolha({required this.url, required this.corTexto, this.caption});
 
   final String url;
   final String? caption;
@@ -321,8 +341,11 @@ class _VideoBolha extends StatelessWidget {
               height: 150,
               color: Colors.black87,
               child: const Center(
-                child: Icon(Icons.play_circle_fill_rounded,
-                    color: Colors.white, size: 52),
+                child: Icon(
+                  Icons.play_circle_fill_rounded,
+                  color: Colors.white,
+                  size: 52,
+                ),
               ),
             ),
           ),
@@ -330,9 +353,10 @@ class _VideoBolha extends StatelessWidget {
         if (caption != null && caption!.trim().isNotEmpty)
           Padding(
             padding: const EdgeInsets.only(top: 4),
-            child: Text(caption!,
-                style:
-                    TextStyle(fontSize: 14, color: corTexto, height: 1.25)),
+            child: Text(
+              caption!,
+              style: TextStyle(fontSize: 14, color: corTexto, height: 1.25),
+            ),
           ),
       ],
     );
@@ -358,19 +382,22 @@ class _VideoTelaCheiaState extends State<_VideoTelaCheia> {
   void initState() {
     super.initState();
     _video = VideoPlayerController.networkUrl(Uri.parse(widget.url));
-    _video.initialize().then((_) {
-      if (!mounted) return;
-      setState(() {
-        _chewie = ChewieController(
-          videoPlayerController: _video,
-          autoPlay: true,
-          allowFullScreen: false,
-          allowMuting: true,
-        );
-      });
-    }).catchError((Object e) {
-      if (mounted) setState(() => _erro = e.toString());
-    });
+    _video
+        .initialize()
+        .then((_) {
+          if (!mounted) return;
+          setState(() {
+            _chewie = ChewieController(
+              videoPlayerController: _video,
+              autoPlay: true,
+              allowFullScreen: false,
+              allowMuting: true,
+            );
+          });
+        })
+        .catchError((Object e) {
+          if (mounted) setState(() => _erro = e.toString());
+        });
   }
 
   @override
@@ -389,12 +416,14 @@ class _VideoTelaCheiaState extends State<_VideoTelaCheia> {
           Positioned.fill(
             child: Center(
               child: _erro != null
-                  ? Text('Não foi possível reproduzir o vídeo.\n$_erro',
+                  ? Text(
+                      'Não foi possível reproduzir o vídeo.\n$_erro',
                       textAlign: TextAlign.center,
-                      style: const TextStyle(color: Colors.white70))
+                      style: const TextStyle(color: Colors.white70),
+                    )
                   : _chewie == null
-                      ? const CircularProgressIndicator(color: Colors.white)
-                      : Chewie(controller: _chewie!),
+                  ? const CircularProgressIndicator(color: Colors.white)
+                  : Chewie(controller: _chewie!),
             ),
           ),
           Positioned(
@@ -402,8 +431,11 @@ class _VideoTelaCheiaState extends State<_VideoTelaCheia> {
             right: 8,
             child: SafeArea(
               child: IconButton(
-                icon: const Icon(Icons.close_rounded,
-                    color: Colors.white, size: 28),
+                icon: const Icon(
+                  Icons.close_rounded,
+                  color: Colors.white,
+                  size: 28,
+                ),
                 onPressed: widget.onFechar,
               ),
             ),
@@ -433,8 +465,10 @@ class _AudioBolha extends StatelessWidget {
     // quando carregar, ouvidosVersao muda e o builder repinta.
     _AudioCentral.carregarOuvidos();
     return ListenableBuilder(
-      listenable: Listenable.merge(
-          [_AudioCentral.urlAtual, _AudioCentral.ouvidosVersao]),
+      listenable: Listenable.merge([
+        _AudioCentral.urlAtual,
+        _AudioCentral.ouvidosVersao,
+      ]),
       builder: (context, _) {
         final souAtiva = _AudioCentral.urlAtual.value == url;
         final jaOuvido = _AudioCentral.ouvidos.contains(url);
@@ -445,10 +479,12 @@ class _AudioBolha extends StatelessWidget {
               StreamBuilder<PlayerState>(
                 stream: _AudioCentral.player.playerStateStream,
                 builder: (context, snap) {
-                  final tocando = souAtiva &&
+                  final tocando =
+                      souAtiva &&
                       (snap.data?.playing ?? false) &&
                       snap.data?.processingState != ProcessingState.completed;
-                  final carregando = souAtiva &&
+                  final carregando =
+                      souAtiva &&
                       (snap.data?.processingState == ProcessingState.loading ||
                           snap.data?.processingState ==
                               ProcessingState.buffering);
@@ -472,7 +508,9 @@ class _AudioBolha extends StatelessWidget {
                           ? const Padding(
                               padding: EdgeInsets.all(10),
                               child: CircularProgressIndicator(
-                                  strokeWidth: 2, color: Colors.white),
+                                strokeWidth: 2,
+                                color: Colors.white,
+                              ),
                             )
                           : Icon(
                               tocando
@@ -500,8 +538,10 @@ class _AudioBolha extends StatelessWidget {
                         : Duration.zero;
                     // Ja ouvido ate o fim: permanece 100% azul (WhatsApp).
                     final progresso = souAtiva && total.inMilliseconds > 0
-                        ? (posicao.inMilliseconds / total.inMilliseconds)
-                            .clamp(0.0, 1.0)
+                        ? (posicao.inMilliseconds / total.inMilliseconds).clamp(
+                            0.0,
+                            1.0,
+                          )
                         : (jaOuvido ? 1.0 : 0.0);
                     return Column(
                       mainAxisSize: MainAxisSize.min,
@@ -513,9 +553,12 @@ class _AudioBolha extends StatelessWidget {
                           corBase: corTexto.withValues(alpha: 0.25),
                           onSeek: !souAtiva || total == Duration.zero
                               ? null
-                              : (v) => _AudioCentral.player.seek(Duration(
-                                  milliseconds:
-                                      (total.inMilliseconds * v).round())),
+                              : (v) => _AudioCentral.player.seek(
+                                  Duration(
+                                    milliseconds: (total.inMilliseconds * v)
+                                        .round(),
+                                  ),
+                                ),
                         ),
                         const SizedBox(height: 2),
                         Text(
@@ -532,6 +575,33 @@ class _AudioBolha extends StatelessWidget {
                   },
                 ),
               ),
+              if (souAtiva)
+                ValueListenableBuilder<double>(
+                  valueListenable: _AudioCentral.velocidade,
+                  builder: (context, vel, _) => InkWell(
+                    borderRadius: BorderRadius.circular(10),
+                    onTap: _AudioCentral.ciclarVelocidade,
+                    child: Container(
+                      margin: const EdgeInsets.only(left: 4),
+                      padding:
+                          const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: corTexto.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Text(
+                        vel == vel.roundToDouble()
+                            ? '${vel.toInt()}x'
+                            : '${vel}x',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                          color: corTexto.withValues(alpha: 0.8),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
             ],
           ),
         );
@@ -580,7 +650,8 @@ class _Ondinhas extends StatelessWidget {
         onTapDown: onSeek == null
             ? null
             : (d) => onSeek!(
-                (d.localPosition.dx / constraints.maxWidth).clamp(0.0, 1.0)),
+                (d.localPosition.dx / constraints.maxWidth).clamp(0.0, 1.0),
+              ),
         child: SizedBox(
           height: 24,
           child: Row(
@@ -630,8 +701,8 @@ class _ArquivoTile extends StatelessWidget {
     return InkWell(
       onTap: url == null
           ? null
-          : () => launchUrl(Uri.parse(url),
-              mode: LaunchMode.externalApplication),
+          : () =>
+                launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
