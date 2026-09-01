@@ -53,7 +53,11 @@ class _EleitoralMapaPageState extends ConsumerState<EleitoralMapaPage> {
       appBar: AppBar(
         backgroundColor: corHeader,
         foregroundColor: Colors.white,
-        automaticallyImplyLeading: false,
+        leading: IconButton(
+          tooltip: 'Voltar ao GabiFlow',
+          icon: const Icon(Icons.close_rounded),
+          onPressed: () => context.go('/home'),
+        ),
         title: Row(
           children: [
             const Icon(Icons.local_fire_department_rounded,

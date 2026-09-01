@@ -1,6 +1,8 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:file_picker/file_picker.dart';
+import 'package:image/image.dart' as img;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -387,9 +389,34 @@ class _CentralChatPageState extends ConsumerState<CentralChatPage> {
     }
     if (caminho == null || !mounted) return;
 
+    // Foto: assa a orientacao EXIF nos pixels (camera grava paisagem + metadado
+    // "girar"; ao reprocessar no WhatsApp o EXIF some e a foto fica deitada).
+    if (tipo == 'image') {
+      caminho = await _corrigirOrientacaoImagem(caminho) ?? caminho;
+    }
+
     await ref
         .read(chatProvider(widget.conversationId).notifier)
         .enviarMidia(filePath: caminho, tipo: tipo, filename: nome);
+  }
+
+  /// Reescreve a imagem com a orientacao ja aplicada aos pixels (bakeOrientation)
+  /// e sem depender do EXIF. Em falha, retorna null (mantem o arquivo original).
+  Future<String?> _corrigirOrientacaoImagem(String path) async {
+    try {
+      final bytes = await File(path).readAsBytes();
+      final decoded = img.decodeImage(bytes);
+      if (decoded == null) return null;
+      final corrigida = img.bakeOrientation(decoded);
+      final jpg = img.encodeJpg(corrigida, quality: 88);
+      final dir = await getTemporaryDirectory();
+      final out =
+          '${dir.path}/img_${DateTime.now().millisecondsSinceEpoch}.jpg';
+      await File(out).writeAsBytes(jpg);
+      return out;
+    } catch (_) {
+      return null;
+    }
   }
 
   Future<void> _transferirConversa() async {
@@ -719,6 +746,21 @@ class _CentralChatPageState extends ConsumerState<CentralChatPage> {
     final estado = ref.watch(chatProvider(widget.conversationId));
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
+    // Reações grudam na mensagem alvo (estilo WhatsApp): removemos as reações
+    // da lista e mapeamos emoji -> wamid da mensagem reagida.
+    final reacoesPorWamid = <String, List<String>>{};
+    for (final m in estado.mensagens) {
+      if (m.ehReacao &&
+          m.reactionMessageId != null &&
+          (m.reactionEmoji?.isNotEmpty ?? false)) {
+        reacoesPorWamid
+            .putIfAbsent(m.reactionMessageId!, () => [])
+            .add(m.reactionEmoji!);
+      }
+    }
+    final visiveis =
+        estado.mensagens.where((m) => !m.ehReacao).toList(growable: false);
+
     return Scaffold(
       backgroundColor: isDark ? _fundoEscuro : _fundoClaro,
       appBar: AppBar(
@@ -996,12 +1038,13 @@ class _CentralChatPageState extends ConsumerState<CentralChatPage> {
                       horizontal: 10,
                       vertical: 8,
                     ),
-                    itemCount: estado.mensagens.length,
+                    itemCount: visiveis.length,
                     itemBuilder: (context, i) {
-                      final real = estado.mensagens.length - 1 - i;
-                      final m = estado.mensagens[real];
-                      final anterior = real > 0
-                          ? estado.mensagens[real - 1]
+                      final real = visiveis.length - 1 - i;
+                      final m = visiveis[real];
+                      final anterior = real > 0 ? visiveis[real - 1] : null;
+                      final reacoes = m.messageId != null
+                          ? reacoesPorWamid[m.messageId]
                           : null;
                       return Column(
                         children: [
@@ -1014,6 +1057,7 @@ class _CentralChatPageState extends ConsumerState<CentralChatPage> {
                                 ? _bolhaMinhaEscuro
                                 : _bolhaMinhaClaro,
                             tickAzul: _tickAzul,
+                            reacoes: reacoes,
                             onResponder: _responderMensagem,
                             onEncaminhar: _encaminharMensagem,
                             onExcluir: m.minha ? _excluirMensagem : null,
@@ -1400,6 +1444,7 @@ class _Bolha extends StatelessWidget {
     required this.isDark,
     required this.corMinha,
     required this.tickAzul,
+    this.reacoes,
     this.onResponder,
     this.onEncaminhar,
     this.onExcluir,
@@ -1409,6 +1454,7 @@ class _Bolha extends StatelessWidget {
   final bool isDark;
   final Color corMinha;
   final Color tickAzul;
+  final List<String>? reacoes; // emojis de reação grudados nesta mensagem
   final void Function(Mensagem)? onResponder;
   final void Function(Mensagem)? onEncaminhar;
   final void Function(Mensagem)? onExcluir;
@@ -1442,12 +1488,19 @@ class _Bolha extends StatelessWidget {
     // jeito com preto/branco — a cor do texto só depende do tema.
     final corTexto = isDark ? Colors.white : Colors.black87;
 
+    final temReacoes = reacoes != null && reacoes!.isNotEmpty;
+
     return GestureDetector(
       onLongPress: () => _abrirMenuMensagem(context, mensagem),
       child: Align(
         alignment: minha ? Alignment.centerRight : Alignment.centerLeft,
-        child: Container(
-          margin: const EdgeInsets.symmetric(vertical: 2),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment:
+              minha ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+          children: [
+        Container(
+          margin: EdgeInsets.only(top: 2, bottom: temReacoes ? 10 : 2),
           padding: const EdgeInsets.fromLTRB(10, 6, 8, 4),
           constraints: BoxConstraints(
             maxWidth: MediaQuery.of(context).size.width * 0.78,
@@ -1514,6 +1567,30 @@ class _Bolha extends StatelessWidget {
               ),
             ],
           ),
+        ),
+        // Reação(ões) grudada(s) no canto inferior da bolha (estilo WhatsApp).
+        if (temReacoes)
+          Transform.translate(
+            offset: const Offset(0, -14),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+              decoration: BoxDecoration(
+                color: isDark ? const Color(0xFF202C33) : Colors.white,
+                borderRadius: BorderRadius.circular(12),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.12),
+                    blurRadius: 2,
+                  ),
+                ],
+              ),
+              child: Text(
+                reacoes!.join(' '),
+                style: const TextStyle(fontSize: 13),
+              ),
+            ),
+          ),
+          ],
         ),
       ),
     );

@@ -3,6 +3,8 @@
 // O OAuth em si acontece no navegador (authUrl); o servidor sincroniza
 // bidirecionalmente e os eventos caem na mesma tabela que o app ja le.
 
+import 'package:dio/dio.dart';
+
 import '../../../../core/network/api_client.dart';
 
 class GoogleAgendaStatus {
@@ -63,11 +65,27 @@ class GoogleAgendaDatasource {
   }
 
   /// Puxa os eventos do Google agora (sync manual).
+  ///
+  /// Um 500 aqui traz o motivo real no corpo (`error` vem de
+  /// last_sync_error do servidor) — repassa-lo e' o que permite ao
+  /// atendente distinguir "token do Google expirou" de "sem internet".
   Future<void> sincronizar() async {
-    final res = await _client.post<dynamic>(
-      '/api/agenda/google/sync',
-      data: const <String, dynamic>{},
-    );
-    _data(res.data, 'sincronizar Google');
+    try {
+      final res = await _client.post<dynamic>(
+        '/api/agenda/google/sync',
+        data: const <String, dynamic>{},
+        // O sync completo pagina o Google e grava evento a evento — passa
+        // facil dos 30s padrao, e o timeout virava um falso "sem conexao".
+        options: Options(receiveTimeout: const Duration(minutes: 2)),
+      );
+      _data(res.data, 'sincronizar Google');
+    } on DioException catch (e) {
+      final body = e.response?.data;
+      final motivo = body is Map<String, dynamic> ? body['error'] : null;
+      if (motivo != null && motivo.toString().isNotEmpty) {
+        throw Exception('sync falhou: $motivo');
+      }
+      rethrow;
+    }
   }
 }

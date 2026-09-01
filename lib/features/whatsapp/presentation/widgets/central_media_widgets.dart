@@ -183,12 +183,79 @@ class MidiaConteudo extends StatelessWidget {
           dica: 'Abrir documento',
         );
       default:
+        // Template Meta com botões: o backend embute os botões no texto como
+        // "---TEMPLATE_BUTTONS---\n[BTN:TIPO:Rótulo:]". Renderiza o corpo limpo
+        // + os botões como chips (estilo WhatsApp) em vez do marcador cru.
+        final tpl = _parseTemplateBotoes(mensagem.previewTexto);
+        if (tpl.botoes.isNotEmpty) {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (tpl.corpo.isNotEmpty)
+                TextoComCopiaveis(texto: tpl.corpo, corTexto: corTexto),
+              const SizedBox(height: 6),
+              ...tpl.botoes.map((b) => Container(
+                    margin: const EdgeInsets.only(top: 4),
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    decoration: BoxDecoration(
+                      border: Border(
+                        top: BorderSide(color: corTexto.withValues(alpha: 0.15)),
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.reply_rounded,
+                            size: 15, color: Color(0xFF0095F3)),
+                        const SizedBox(width: 6),
+                        Flexible(
+                          child: Text(
+                            b,
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(
+                              fontSize: 13.5,
+                              fontWeight: FontWeight.w600,
+                              color: Color(0xFF0095F3),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  )),
+            ],
+          );
+        }
         return TextoComCopiaveis(
           texto: mensagem.previewTexto,
           corTexto: corTexto,
         );
     }
   }
+}
+
+/// Corpo + rótulos dos botões extraídos de um template Meta.
+class _TemplateBotoes {
+  final String corpo;
+  final List<String> botoes;
+  const _TemplateBotoes(this.corpo, this.botoes);
+}
+
+_TemplateBotoes _parseTemplateBotoes(String texto) {
+  const marcador = '---TEMPLATE_BUTTONS---';
+  final idx = texto.indexOf(marcador);
+  if (idx < 0) return _TemplateBotoes(texto, const []);
+  final corpo = texto.substring(0, idx).trimRight();
+  final resto = texto.substring(idx + marcador.length);
+  final botoes = <String>[];
+  // [BTN:QUICK_REPLY:Rótulo:] — captura tipo e rótulo (rótulo pode ter vírgula).
+  final re = RegExp(r'\[BTN:([A-Z_]+):(.+?):?\]');
+  for (final m in re.allMatches(resto)) {
+    final label = m.group(2)?.trim() ?? '';
+    if (label.isNotEmpty) botoes.add(label);
+  }
+  return _TemplateBotoes(corpo, botoes);
 }
 
 class _Imagem extends StatelessWidget {

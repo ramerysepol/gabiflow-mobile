@@ -106,6 +106,23 @@ class _SeletorEleicaoPageState extends ConsumerState<SeletorEleicaoPage>
 
     return Scaffold(
       backgroundColor: cs.surface,
+      // Sem isso a pessoa ficava presa: sem escolher ano+cargo+UF nao havia
+      // como sair da tela (motivo de reprovacao na revisao da Play).
+      appBar: AppBar(
+        backgroundColor: cs.surface,
+        elevation: 0,
+        leading: IconButton(
+          tooltip: 'Voltar',
+          icon: const Icon(Icons.close_rounded),
+          onPressed: () {
+            if (context.canPop()) {
+              context.pop();
+            } else {
+              context.go('/home');
+            }
+          },
+        ),
+      ),
       body: SafeArea(
         child: filtrosAsync.when(
           loading: () => const Center(child: CircularProgressIndicator()),

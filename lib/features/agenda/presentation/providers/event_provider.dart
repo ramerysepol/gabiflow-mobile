@@ -72,7 +72,9 @@ class EventListState {
 DateTime? _parseDate(String? s) {
   if (s == null) return null;
   try {
-    return DateTime.parse(s);
+    // A API manda UTC ("...Z"); agrupar sem converter jogava o evento das
+    // 22h no dia seguinte do calendario.
+    return DateTime.parse(s).toLocal();
   } catch (_) {
     return null;
   }

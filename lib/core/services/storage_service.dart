@@ -16,53 +16,83 @@ class StorageService {
   }
   
   // ===== Secure Storage (para dados sensíveis) =====
-  
+
+  // Evita limpar o cofre repetidamente numa mesma sessão.
+  static bool _cofreCorrompidoTratado = false;
+
+  /// Leitura tolerante a falha: se a descriptografia falhar (ex.:
+  /// BadPaddingException/BAD_DECRYPT após restaurar backup em outro aparelho,
+  /// troca de assinatura ou perda da chave do Keystore), NUNCA deixa virar
+  /// exceção não tratada que trava o app no splash. Em vez disso, limpa o cofre
+  /// (dado ilegível é inútil) e trata como deslogado.
+  static Future<String?> _safeRead(String key) async {
+    try {
+      return await _secureStorage.read(key: key);
+    } catch (_) {
+      if (!_cofreCorrompidoTratado) {
+        _cofreCorrompidoTratado = true;
+        try {
+          await _secureStorage.deleteAll();
+        } catch (_) {}
+      }
+      return null;
+    }
+  }
+
   /// Salva o token de acesso
   static Future<void> saveAccessToken(String token) async {
     await _secureStorage.write(key: AppConstants.accessTokenKey, value: token);
   }
-  
+
   /// Recupera o token de acesso
   static Future<String?> getAccessToken() async {
-    return await _secureStorage.read(key: AppConstants.accessTokenKey);
+    return _safeRead(AppConstants.accessTokenKey);
   }
-  
+
   /// Salva o refresh token
   static Future<void> saveRefreshToken(String token) async {
     await _secureStorage.write(key: AppConstants.refreshTokenKey, value: token);
   }
-  
+
   /// Recupera o refresh token
   static Future<String?> getRefreshToken() async {
-    return await _secureStorage.read(key: AppConstants.refreshTokenKey);
+    return _safeRead(AppConstants.refreshTokenKey);
   }
-  
+
   /// Salva a configuração do tenant
   static Future<void> saveTenantConfig(Map<String, dynamic> config) async {
     final jsonString = jsonEncode(config);
     await _secureStorage.write(key: AppConstants.tenantConfigKey, value: jsonString);
   }
-  
+
   /// Recupera a configuração do tenant
   static Future<Map<String, dynamic>?> getTenantConfig() async {
-    final jsonString = await _secureStorage.read(key: AppConstants.tenantConfigKey);
+    final jsonString = await _safeRead(AppConstants.tenantConfigKey);
     if (jsonString != null) {
-      return jsonDecode(jsonString) as Map<String, dynamic>;
+      try {
+        return jsonDecode(jsonString) as Map<String, dynamic>;
+      } catch (_) {
+        return null;
+      }
     }
     return null;
   }
-  
+
   /// Salva dados do usuário
   static Future<void> saveUserData(Map<String, dynamic> userData) async {
     final jsonString = jsonEncode(userData);
     await _secureStorage.write(key: AppConstants.userDataKey, value: jsonString);
   }
-  
+
   /// Recupera dados do usuário
   static Future<Map<String, dynamic>?> getUserData() async {
-    final jsonString = await _secureStorage.read(key: AppConstants.userDataKey);
+    final jsonString = await _safeRead(AppConstants.userDataKey);
     if (jsonString != null) {
-      return jsonDecode(jsonString) as Map<String, dynamic>;
+      try {
+        return jsonDecode(jsonString) as Map<String, dynamic>;
+      } catch (_) {
+        return null;
+      }
     }
     return null;
   }
@@ -98,14 +128,18 @@ class StorageService {
 
   /// Recupera credenciais biométricas (email, password e tenant quando houver)
   static Future<Map<String, String>?> getBiometricCredentials() async {
-    final jsonString = await _secureStorage.read(key: 'biometric_credentials');
+    final jsonString = await _safeRead('biometric_credentials');
     if (jsonString != null) {
-      final data = jsonDecode(jsonString) as Map<String, dynamic>;
-      return {
-        'email': data['email'] as String,
-        'password': data['password'] as String,
-        if (data['tenant'] != null) 'tenant': data['tenant'] as String,
-      };
+      try {
+        final data = jsonDecode(jsonString) as Map<String, dynamic>;
+        return {
+          'email': data['email'] as String,
+          'password': data['password'] as String,
+          if (data['tenant'] != null) 'tenant': data['tenant'] as String,
+        };
+      } catch (_) {
+        return null;
+      }
     }
     return null;
   }

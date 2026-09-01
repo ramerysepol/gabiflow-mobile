@@ -32,7 +32,11 @@ class CommandCenterPage extends ConsumerWidget {
       appBar: AppBar(
         backgroundColor: corHeader,
         foregroundColor: Colors.white,
-        automaticallyImplyLeading: false,
+        leading: IconButton(
+          tooltip: 'Voltar ao GabiFlow',
+          icon: const Icon(Icons.close_rounded),
+          onPressed: () => context.go('/home'),
+        ),
         title: const Row(
           children: [
             Icon(Icons.auto_awesome_rounded,

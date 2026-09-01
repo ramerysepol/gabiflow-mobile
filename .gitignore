@@ -46,3 +46,6 @@ app.*.map.json
 
 # Environment
 .env
+
+# Artefatos de release (AAB/símbolos/mapping) — não versionar
+release_artifacts/

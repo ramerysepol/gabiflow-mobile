@@ -60,6 +60,14 @@ android {
             } else {
                 signingConfigs.getByName("debug")
             }
+            // Ofuscacao/encolhimento do lado Android (R8): dificulta engenharia
+            // reversa e reduz o APK. O Dart e' ofuscado a' parte com --obfuscate.
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro",
+            )
         }
     }
 }

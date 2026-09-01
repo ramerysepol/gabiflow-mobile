@@ -289,6 +289,23 @@ class _DemandContent extends ConsumerWidget {
                       : null,
                 ).animate().fadeIn(delay: 120.ms),
 
+              // Responsável
+              if (demand.responsavelNome != null)
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: CircleAvatar(
+                    backgroundColor: cs.secondaryContainer,
+                    child: Icon(Icons.assignment_ind_rounded,
+                        color: cs.secondary),
+                  ),
+                  title: Text('Responsável',
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color: cs.onSurfaceVariant,
+                          )),
+                  subtitle: Text(demand.responsavelNome!,
+                      style: Theme.of(context).textTheme.bodyMedium),
+                ).animate().fadeIn(delay: 130.ms),
+
               // Prazo
               if (deadline != null)
                 ListTile(

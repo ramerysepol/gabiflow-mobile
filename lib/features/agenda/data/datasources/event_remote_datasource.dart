@@ -44,7 +44,14 @@ class EventRemoteDataSourceImpl implements EventRemoteDataSource {
       queryParameters: params.isNotEmpty ? params : null,
       options: opts,
     );
-    final data = response.data?['data'] as Map<String, dynamic>? ?? {};
+    // O ApiClient aceita status < 500 sem lançar; um 401/403/4xx viraria
+    // silenciosamente uma lista vazia ("Sem compromissos"). Trate como erro.
+    final body = response.data;
+    if (response.statusCode != 200 || body == null || body['success'] != true) {
+      throw Exception(
+          (body?['error'] as String?) ?? 'Falha ao carregar a agenda (${response.statusCode})');
+    }
+    final data = body['data'] as Map<String, dynamic>? ?? {};
     return EventListResponse.fromJson(data);
   }
 

@@ -50,9 +50,21 @@ class EleitoralShell extends ConsumerWidget {
 
     final corBarra = isDark ? const Color(0xFF10151F) : const Color(0xFF16213E);
 
-    return Scaffold(
-      body: child,
-      bottomNavigationBar: NavigationBarTheme(
+    // Voltar do sistema (botao/gesto) nunca deixa a pessoa presa: numa aba
+    // secundaria volta pra Visao; na Visao sai do modulo e volta ao app.
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        if (didPop) return;
+        if (location != '/home/eleitoral') {
+          context.go('/home/eleitoral');
+        } else {
+          context.go('/home');
+        }
+      },
+      child: Scaffold(
+        body: child,
+        bottomNavigationBar: NavigationBarTheme(
         data: NavigationBarThemeData(
           backgroundColor: corBarra,
           indicatorColor: cs.primary.withValues(alpha: 0.28),
@@ -88,6 +100,7 @@ class EleitoralShell extends ConsumerWidget {
                 label: label,
               ),
           ],
+          ),
         ),
       ),
     );

@@ -74,9 +74,10 @@ class EventDetailPage extends ConsumerWidget {
         ),
         data: (event) {
           final cs = Theme.of(context).colorScheme;
-          final start = DateTime.tryParse(event.startDate);
-          final end =
-              event.endDate != null ? DateTime.tryParse(event.endDate!) : null;
+          final start = DateTime.tryParse(event.startDate)?.toLocal();
+          final end = event.endDate != null
+              ? DateTime.tryParse(event.endDate!)?.toLocal()
+              : null;
 
           return CustomScrollView(
             slivers: [

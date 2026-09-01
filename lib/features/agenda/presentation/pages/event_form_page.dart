@@ -67,8 +67,9 @@ class _EventFormPageState extends ConsumerState<EventFormPage> {
       _descCtrl.text = e.descricao ?? '';
       _locationCtrl.text = e.location ?? '';
 
-      final inicio = DateTime.tryParse(e.startDate);
-      final fim = e.endDate != null ? DateTime.tryParse(e.endDate!) : null;
+      final inicio = DateTime.tryParse(e.startDate)?.toLocal();
+      final fim =
+          e.endDate != null ? DateTime.tryParse(e.endDate!)?.toLocal() : null;
 
       setState(() {
         _type = agendaTipoDe(e.type).valor;

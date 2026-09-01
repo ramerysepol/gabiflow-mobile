@@ -107,7 +107,11 @@ class _EleitoralHomePageState extends ConsumerState<EleitoralHomePage> {
       appBar: AppBar(
         backgroundColor: corHeader,
         foregroundColor: Colors.white,
-        automaticallyImplyLeading: false,
+        leading: IconButton(
+          tooltip: 'Voltar ao GabiFlow',
+          icon: const Icon(Icons.close_rounded),
+          onPressed: () => context.go('/home'),
+        ),
         title: const Row(
           children: [
             Icon(Icons.groups_rounded, color: Color(0xFF64B5F6), size: 22),

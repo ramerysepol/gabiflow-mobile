@@ -108,6 +108,8 @@ class DemandModel {
   final String prioridade;
   final String? constituentId;
   final String? constituentNome;
+  final String? responsavelId;
+  final String? responsavelNome;
   final String? deadline;
   /// Tipo da demanda no vocabulario do painel: solicitacao, reclamacao,
   /// sugestao, servico, emenda, outro.
@@ -125,6 +127,8 @@ class DemandModel {
     this.prioridade = 'medium',
     this.constituentId,
     this.constituentNome,
+    this.responsavelId,
+    this.responsavelNome,
     this.deadline,
     this.tipo,
     this.notes = const [],
@@ -161,6 +165,9 @@ class DemandModel {
       constituentId: json['constituent_id']?.toString(),
       constituentNome: json['constituent_nome']?.toString() ??
           json['constituent_name']?.toString(),
+      // So' o detalhe devolve o responsavel; na listagem fica nulo.
+      responsavelId: json['responsavel_id']?.toString(),
+      responsavelNome: json['responsavel_nome']?.toString(),
       // A listagem devolve `deadline`; o detalhe devolve `data_previsao`.
       // Sem o segundo, o prazo sumia justamente na tela de edicao.
       deadline: json['deadline']?.toString() ??

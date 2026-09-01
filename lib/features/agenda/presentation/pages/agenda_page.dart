@@ -138,6 +138,30 @@ class _AgendaPageState extends ConsumerState<AgendaPage> {
   Widget _buildEventsSliver(EventListState state) {
     final events = state.eventsForDay(_selectedDay);
 
+    // Falha de rede/servidor: mostrar o erro com retry em vez de fingir
+    // que nao ha compromissos (bug do "Sem compromissos" silencioso).
+    if (state.error != null && state.items.isEmpty && !state.isLoading) {
+      return SliverToBoxAdapter(
+        child: Padding(
+          padding: const EdgeInsets.only(top: AppSpacing.md),
+          child: Column(
+            children: [
+              const AppEmptyState(
+                title: 'Não foi possível carregar a agenda',
+                subtitle: 'Verifique sua conexão e tente novamente.',
+              ),
+              TextButton.icon(
+                onPressed: () =>
+                    ref.read(eventListProvider.notifier).refresh(),
+                icon: const Icon(Icons.refresh_rounded),
+                label: const Text('Tentar novamente'),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
     if (events.isEmpty) {
       // Quem nao pode criar nao deve ler "Toque em + para criar": o botao nao
       // existe para essa pessoa, e a frase viraria uma instrucao impossivel.
@@ -188,9 +212,9 @@ class _EventTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final tipo = agendaTipoDe(event.type);
-    final start = DateTime.tryParse(event.startDate);
+    final start = DateTime.tryParse(event.startDate)?.toLocal();
     final end = event.endDate != null
-        ? DateTime.tryParse(event.endDate!)
+        ? DateTime.tryParse(event.endDate!)?.toLocal()
         : null;
 
     return Card(
@@ -357,6 +381,24 @@ class _GoogleCalendarCardState extends ConsumerState<_GoogleCalendarCard> {
   /// em orientação (a principal: integração não configurada no gabinete).
   String _mensagemAmigavel(Object e) {
     final s = e.toString().toLowerCase();
+    // O servidor mandou o motivo real (last_sync_error): mostrar e' melhor
+    // que qualquer traducao — "invalid_grant" leva direto ao reconectar.
+    if (s.contains('sync falhou:')) {
+      final motivo = e.toString().split('sync falhou:').last.trim();
+      if (motivo.contains('invalid_grant') ||
+          motivo.contains('unauthorized') ||
+          motivo.contains('401')) {
+        return 'A autorização do Google expirou. Reconecte a agenda no '
+            'painel (Configurações → Agenda → Google Calendar).';
+      }
+      if (motivo.toLowerCase().contains('quota') ||
+          motivo.toLowerCase().contains('rate limit')) {
+        return 'O Google limitou temporariamente as sincronizações. '
+            'Aguarde um minuto e tente de novo — seus compromissos já '
+            'salvos continuam disponíveis.';
+      }
+      return 'O Google recusou a sincronização: $motivo';
+    }
     if (s.contains('500') ||
         s.contains('erro interno') ||
         s.contains('internal') ||
@@ -471,12 +513,12 @@ class _GoogleCalendarCardState extends ConsumerState<_GoogleCalendarCard> {
                     Text(
                       s.conectado
                           ? (s.erroSync != null
-                              ? 'Erro na última sync'
+                              ? 'Erro na última sync: ${s.erroSync}'
                               : s.ultimaSync != null
                                   ? 'Sync: ${DateFormat('dd/MM HH:mm').format(s.ultimaSync!.toLocal())}'
                                   : 'Conectado — sincronize agora')
                           : 'Veja seus compromissos do Google aqui',
-                      maxLines: 1,
+                      maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
                         fontSize: 10.5,

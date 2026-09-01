@@ -12,26 +12,43 @@ import 'core/theme/tenant_theme_provider.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
+  // Startup blindado: uma falha em qualquer init (dotenv, Hive, storage) NUNCA
+  // pode travar o app no splash — cada passo degrada com segurança e o app
+  // sempre chega até a UI (login). Requisito para passar na revisão das lojas.
+
   // Variáveis de ambiente
-  await dotenv.load(fileName: '.env');
+  try {
+    await dotenv.load(fileName: '.env');
+  } catch (_) {}
 
   // Cache local
-  await Hive.initFlutter();
-  // Abre boxes necessários antes do ProviderScope
-  await Hive.openBox<dynamic>('electoral_selection');
-  await Hive.openBox<dynamic>('command_center');
+  try {
+    await Hive.initFlutter();
+    await Hive.openBox<dynamic>('electoral_selection');
+    await Hive.openBox<dynamic>('command_center');
+  } catch (_) {}
 
   // Secure storage + preferências
-  await StorageService.init();
+  try {
+    await StorageService.init();
+  } catch (_) {}
 
   // Cor do gabinete salva — semeia o tema sem flash da cor padrão
-  final initialSeed = await loadSavedSeedColor();
+  Color? initialSeed;
+  try {
+    initialSeed = await loadSavedSeedColor();
+  } catch (_) {
+    initialSeed = null;
+  }
 
+  final seed = initialSeed;
   runApp(
     ProviderScope(
       overrides: [
-        tenantSeedProvider
-            .overrideWith((ref) => TenantSeedNotifier(initialSeed)),
+        // Só sobrescreve se conseguimos ler o seed salvo; senão o provider
+        // usa o default (evita erro caso a leitura tenha falhado).
+        if (seed != null)
+          tenantSeedProvider.overrideWith((ref) => TenantSeedNotifier(seed)),
       ],
       child: const GabiFlowApp(),
     ),

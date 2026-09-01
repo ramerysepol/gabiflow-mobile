@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/widgets/shimmer_skeleton.dart';
@@ -43,7 +44,11 @@ class _RankingsPageState extends ConsumerState<RankingsPage>
       appBar: AppBar(
         backgroundColor: corHeader,
         foregroundColor: Colors.white,
-        automaticallyImplyLeading: false,
+        leading: IconButton(
+          tooltip: 'Voltar ao GabiFlow',
+          icon: const Icon(Icons.close_rounded),
+          onPressed: () => context.go('/home'),
+        ),
         title: const Row(
           children: [
             Icon(Icons.leaderboard_rounded,

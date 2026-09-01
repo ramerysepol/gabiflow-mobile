@@ -95,6 +95,7 @@ class ConversaResumo {
 class Mensagem {
   final int id;
   final int conversationId;
+  final String? messageId; // wamid (id da Meta) — usado p/ casar reações
   final String direction; // inbound | outbound | system
   final String
   contentType; // text | image | audio | video | document | template | ...
@@ -108,12 +109,14 @@ class Mensagem {
   final String? sentByUserName;
   final String? quotedMessagePreview;
   final String? reactionEmoji;
+  final String? reactionMessageId; // wamid da msg reagida
   final DateTime createdAt;
   final String? localFilePath; // preview otimista de midia recem-enviada
 
   const Mensagem({
     required this.id,
     required this.conversationId,
+    this.messageId,
     required this.direction,
     required this.contentType,
     this.textContent,
@@ -126,9 +129,12 @@ class Mensagem {
     this.sentByUserName,
     this.quotedMessagePreview,
     this.reactionEmoji,
+    this.reactionMessageId,
     required this.createdAt,
     this.localFilePath,
   });
+
+  bool get ehReacao => contentType == 'reaction';
 
   bool get minha => direction == 'outbound';
   bool get sistema => direction == 'system';
@@ -164,6 +170,7 @@ class Mensagem {
   factory Mensagem.fromJson(Map<String, dynamic> json) => Mensagem(
     id: _int(json['id']),
     conversationId: _int(json['conversationId']),
+    messageId: (json['messageId'] ?? json['message_id'])?.toString(),
     direction: json['direction']?.toString() ?? 'inbound',
     contentType: json['contentType']?.toString() ?? 'text',
     textContent: json['textContent'] as String?,
@@ -176,6 +183,8 @@ class Mensagem {
     sentByUserName: json['sentByUserName'] as String?,
     quotedMessagePreview: json['quotedMessagePreview'] as String?,
     reactionEmoji: json['reactionEmoji'] as String?,
+    reactionMessageId:
+        (json['reactionMessageId'] ?? json['reaction_message_id'])?.toString(),
     createdAt: _dt(json['createdAt']) ?? DateTime.now(),
   );
 
