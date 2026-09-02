@@ -10,10 +10,17 @@ import 'central_remote_datasource.dart';
 /// formato exato de cada evento. O polling dos notifiers continua como fallback,
 /// entao se a conexao cair nada quebra — so fica um pouco menos instantaneo.
 class CentralSseService {
-  CentralSseService(this._ds, {required this.onEvento});
+  CentralSseService(this._ds, {required this.onEvento, this.onTyping});
 
   final CentralRemoteDataSource _ds;
   final void Function() onEvento;
+
+  /// Digitação do visitante do webchat (typing_start/typing_stop). Chamado
+  /// com o id da conversa e o estado; typing NAO dispara [onEvento] (refresh
+  /// de lista/mensagens seria desperdicio a cada tecla do cliente).
+  final void Function(int conversationId, bool digitando)? onTyping;
+
+  String _eventoAtual = '';
 
   CancelToken? _cancel;
   StreamSubscription<String>? _sub;
@@ -34,9 +41,24 @@ class CentralSseService {
           .transform(const LineSplitter())
           .listen(
             (linha) {
-              // Linhas SSE de dados começam com "data:". Ignora comentários
-              // (keepalive ":") e cabeçalhos de evento.
-              if (linha.startsWith('data:')) _agendar();
+              // Formato SSE: "event: nome" define o tipo, "data: {...}" traz o
+              // payload e linha em branco encerra o bloco.
+              if (linha.startsWith('event:')) {
+                _eventoAtual = linha.substring(6).trim();
+                return;
+              }
+              if (linha.isEmpty) {
+                _eventoAtual = '';
+                return;
+              }
+              if (!linha.startsWith('data:')) return;
+              if (_eventoAtual == 'typing_start' ||
+                  _eventoAtual == 'typing_stop') {
+                _tratarTyping(
+                    _eventoAtual == 'typing_start', linha.substring(5).trim());
+                return;
+              }
+              _agendar();
             },
             onError: (_) => _reconectar(),
             onDone: _reconectar,
@@ -44,6 +66,18 @@ class CentralSseService {
           );
     } catch (_) {
       _reconectar();
+    }
+  }
+
+  void _tratarTyping(bool digitando, String payload) {
+    final cb = onTyping;
+    if (cb == null || payload.isEmpty) return;
+    try {
+      final data = jsonDecode(payload);
+      final id = data is Map ? data['conversationId'] : null;
+      if (id is num) cb(id.toInt(), digitando);
+    } catch (_) {
+      // payload não-JSON: ignora
     }
   }
 

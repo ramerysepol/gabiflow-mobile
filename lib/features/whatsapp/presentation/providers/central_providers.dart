@@ -168,6 +168,9 @@ class ChatState {
   final String provider;
   final bool hasWindowRestriction;
 
+  /// Visitante do webchat digitando agora (via SSE typing_start/stop).
+  final bool digitando;
+
   const ChatState({
     this.mensagens = const [],
     this.carregando = false,
@@ -176,6 +179,7 @@ class ChatState {
     this.janela,
     this.provider = 'unknown',
     this.hasWindowRestriction = false,
+    this.digitando = false,
   });
 
   /// Bloqueio de envio livre só existe quando o provedor tem restrição de
@@ -191,6 +195,7 @@ class ChatState {
     JanelaInfo? janela,
     String? provider,
     bool? hasWindowRestriction,
+    bool? digitando,
     bool limparErro = false,
   }) => ChatState(
     mensagens: mensagens ?? this.mensagens,
@@ -200,6 +205,7 @@ class ChatState {
     janela: janela ?? this.janela,
     provider: provider ?? this.provider,
     hasWindowRestriction: hasWindowRestriction ?? this.hasWindowRestriction,
+    digitando: digitando ?? this.digitando,
   );
 }
 
@@ -210,14 +216,34 @@ class ChatNotifier extends StateNotifier<ChatState> {
   CentralSseService? _sse;
   int _enviosLocais = 0; // ids negativos temporarios para otimismo
 
+  Timer? _typingClear;
+
   ChatNotifier(this._ds, this.conversationId) : super(const ChatState()) {
     carregar();
-    _sse = CentralSseService(_ds, onEvento: () => carregar(silencioso: true))
-      ..conectar();
+    _sse = CentralSseService(
+      _ds,
+      onEvento: () => carregar(silencioso: true),
+      onTyping: _aoDigitar,
+    )..conectar();
     _pollTimer = Timer.periodic(
       const Duration(seconds: 8),
       (_) => carregar(silencioso: true),
     );
+  }
+
+  /// Visitante digitando nesta conversa. `typing_start` some sozinho após 6s
+  /// sem sinal novo (proteção contra "digitando" órfão se o stop se perder).
+  void _aoDigitar(int convId, bool digitando) {
+    if (convId != conversationId || !mounted) return;
+    _typingClear?.cancel();
+    if (digitando) {
+      state = state.copyWith(digitando: true);
+      _typingClear = Timer(const Duration(seconds: 6), () {
+        if (mounted) state = state.copyWith(digitando: false);
+      });
+    } else {
+      state = state.copyWith(digitando: false);
+    }
   }
 
   Future<void> carregar({bool silencioso = false}) async {
@@ -428,6 +454,7 @@ class ChatNotifier extends StateNotifier<ChatState> {
   @override
   void dispose() {
     _pollTimer?.cancel();
+    _typingClear?.cancel();
     _sse?.fechar();
     super.dispose();
   }

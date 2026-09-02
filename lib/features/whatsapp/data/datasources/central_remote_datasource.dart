@@ -334,6 +334,20 @@ class CentralRemoteDataSource {
     return const [];
   }
 
+  /// Sinaliza "digitando..." do atendente para o cliente do webchat
+  /// (best-effort; o estado expira sozinho no servidor em 15s).
+  Future<void> sinalizarDigitando(int conversationId, bool digitando) async {
+    try {
+      await _apiClient.post<dynamic>(
+        '/api/whatsapp/conversations/$conversationId/typing',
+        data: {'typing': digitando},
+        options: await _authOptions(),
+      );
+    } catch (_) {
+      // indicador é best-effort, nunca vira erro visível
+    }
+  }
+
   /// Assume a conversa para o usuario logado (atendimento ativo).
   /// Usa a rota /privacy (mesma do web): busca a conversa SEM o filtro de
   /// visibilidade por departamento — o PATCH direto retornava "nao encontrada".

@@ -67,11 +67,45 @@ class _CentralChatPageState extends ConsumerState<CentralChatPage> {
   // mensagens "pipocavam" durante o slide.
   bool _transicaoConcluida = false;
 
+  // "digitando..." do atendente → cliente do webchat: avisa no máximo a cada
+  // 3s enquanto digita; desliga após 3,5s parado ou ao enviar.
+  DateTime? _typingEnviadoEm;
+  Timer? _typingStopTimer;
+
+  void _aoDigitarTexto() {
+    final texto = _inputController.text.trim();
+    if (texto.isEmpty) {
+      _pararDigitando();
+      return;
+    }
+    final agora = DateTime.now();
+    if (_typingEnviadoEm == null ||
+        agora.difference(_typingEnviadoEm!) > const Duration(seconds: 3)) {
+      _typingEnviadoEm = agora;
+      unawaited(ref
+          .read(centralDataSourceProvider)
+          .sinalizarDigitando(widget.conversationId, true));
+    }
+    _typingStopTimer?.cancel();
+    _typingStopTimer =
+        Timer(const Duration(milliseconds: 3500), _pararDigitando);
+  }
+
+  void _pararDigitando() {
+    _typingStopTimer?.cancel();
+    if (_typingEnviadoEm == null) return;
+    _typingEnviadoEm = null;
+    unawaited(ref
+        .read(centralDataSourceProvider)
+        .sinalizarDigitando(widget.conversationId, false));
+  }
+
   @override
   void initState() {
     super.initState();
     // Digitar "/" no campo vazio abre as respostas rapidas (como no WhatsApp).
     _inputController.addListener(_aoDigitarBarra);
+    _inputController.addListener(_aoDigitarTexto);
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
@@ -174,6 +208,8 @@ class _CentralChatPageState extends ConsumerState<CentralChatPage> {
   @override
   void dispose() {
     _inputController.removeListener(_aoDigitarBarra);
+    _inputController.removeListener(_aoDigitarTexto);
+    _typingStopTimer?.cancel();
     _inputController.dispose();
     _scrollController.dispose();
     super.dispose();
@@ -909,6 +945,19 @@ class _CentralChatPageState extends ConsumerState<CentralChatPage> {
                         ),
                     ],
                   ),
+                  // Enquanto o cliente digita, o subtítulo vira "digitando…"
+                  // (igual WhatsApp); volta ao normal quando para.
+                  if (estado.digitando)
+                    const Text(
+                      'digitando…',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontStyle: FontStyle.italic,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFF25D366),
+                      ),
+                    )
+                  else
                   Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
