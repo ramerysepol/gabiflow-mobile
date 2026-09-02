@@ -22,6 +22,7 @@ import '../widgets/central_visuals.dart';
 import '../widgets/tags_editor_sheet.dart';
 import '../widgets/template_picker_sheet.dart';
 import '../widgets/transfer_sheet.dart';
+import '../../../../core/network/friendly_error.dart';
 
 /// Chat de uma conversa — visual familiar do WhatsApp: fundo bege/escuro,
 /// bolhas verde (enviada) e branca (recebida), ticks de status e separadores
@@ -77,16 +78,76 @@ class _CentralChatPageState extends ConsumerState<CentralChatPage> {
       final anim = ModalRoute.of(context)?.animation;
       if (anim == null || anim.isCompleted) {
         setState(() => _transicaoConcluida = true);
+        _verificarAssuncao();
         return;
       }
       void aoTerminar(AnimationStatus status) {
         if (status != AnimationStatus.completed) return;
         anim.removeStatusListener(aoTerminar);
-        if (mounted) setState(() => _transicaoConcluida = true);
+        if (mounted) {
+          setState(() => _transicaoConcluida = true);
+          _verificarAssuncao();
+        }
       }
 
       anim.addStatusListener(aoTerminar);
     });
+  }
+
+  bool _gateAssumirVerificado = false;
+
+  /// Igual ao fluxo da web: entrar numa conversa ainda NÃO assumida pede
+  /// autorização; ao confirmar, assume automaticamente e a conversa fica
+  /// privada (cadeado) para o atendente. Cancelar volta para a lista.
+  Future<void> _verificarAssuncao() async {
+    if (_gateAssumirVerificado) return;
+    _gateAssumirVerificado = true;
+
+    final conv = _conversaDaLista();
+    int? assignedTo = conv?.assignedTo;
+    var ehPrivada = conv?.isPrivate ?? false;
+    if (conv == null) {
+      // Deep-link: a lista ainda não tem o item — busca o detalhe.
+      try {
+        final d = await ref
+            .read(centralDataSourceProvider)
+            .detalheConversa(widget.conversationId);
+        assignedTo = d.assignedTo;
+        ehPrivada = d.isPrivate;
+      } catch (_) {
+        return; // sem informação, não bloqueia (o banner de assumir cobre)
+      }
+    }
+    if (!mounted) return;
+    if (assignedTo != null || ehPrivada) return; // já assumida/atribuída
+
+    final assumir = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Assumir atendimento?'),
+        content: const Text(
+          'Esta conversa ainda não foi assumida. Ao continuar, ela será '
+          'atribuída a você e ficará privada (cadeado).',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Voltar'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('Assumir'),
+          ),
+        ],
+      ),
+    );
+    if (!mounted) return;
+    if (assumir == true) {
+      await _assumir();
+    } else if (context.canPop()) {
+      context.pop(); // igual à web: cancelar fecha a conversa
+    }
   }
 
   void _aoDigitarBarra() {
@@ -163,7 +224,7 @@ class _CentralChatPageState extends ConsumerState<CentralChatPage> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Não foi possível assumir: $e')),
+          SnackBar(content: Text('Não foi possível assumir. ${mensagemAmigavel(e)}')),
         );
       }
     }
@@ -295,7 +356,7 @@ class _CentralChatPageState extends ConsumerState<CentralChatPage> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text('Falha ao encaminhar: $e')));
+            .showSnackBar(SnackBar(content: Text('Falha ao encaminhar. ${mensagemAmigavel(e)}')));
       }
     }
   }
@@ -440,7 +501,7 @@ class _CentralChatPageState extends ConsumerState<CentralChatPage> {
       if (mounted) {
         ScaffoldMessenger.of(
           context,
-        ).showSnackBar(SnackBar(content: Text('Falha ao transferir: $e')));
+        ).showSnackBar(SnackBar(content: Text('Falha ao transferir. ${mensagemAmigavel(e)}')));
       }
     }
   }
@@ -509,7 +570,7 @@ class _CentralChatPageState extends ConsumerState<CentralChatPage> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text('Falha ao agendar: $e')));
+            .showSnackBar(SnackBar(content: Text('Falha ao agendar. ${mensagemAmigavel(e)}')));
       }
     }
   }
@@ -527,7 +588,7 @@ class _CentralChatPageState extends ConsumerState<CentralChatPage> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text('Falha ao exportar: $e')));
+            .showSnackBar(SnackBar(content: Text('Falha ao exportar. ${mensagemAmigavel(e)}')));
       }
     }
   }
@@ -691,6 +752,10 @@ class _CentralChatPageState extends ConsumerState<CentralChatPage> {
             notas: notasCtrl.text,
           );
       if (!mounted) return;
+      // Some da lista imediatamente — antes ficava ate o polling de 15s.
+      ref
+          .read(conversasProvider.notifier)
+          .removerConversa(widget.conversationId);
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(const SnackBar(content: Text('Conversa encerrada.')));
@@ -699,7 +764,7 @@ class _CentralChatPageState extends ConsumerState<CentralChatPage> {
       if (mounted) {
         ScaffoldMessenger.of(
           context,
-        ).showSnackBar(SnackBar(content: Text('Falha ao encerrar: $e')));
+        ).showSnackBar(SnackBar(content: Text('Falha ao encerrar. ${mensagemAmigavel(e)}')));
       }
     }
   }
@@ -761,6 +826,15 @@ class _CentralChatPageState extends ConsumerState<CentralChatPage> {
     final visiveis =
         estado.mensagens.where((m) => !m.ehReacao).toList(growable: false);
 
+    // Cadeado no cabeçalho quando a conversa é privada (assumida). Watch na
+    // lista: o ícone aparece na hora em que o atendente assume.
+    final ehPrivada = ref.watch(conversasProvider.select((s) {
+      for (final c in s.conversas) {
+        if (c.id == widget.conversationId) return c.isPrivate;
+      }
+      return false;
+    }));
+
     return Scaffold(
       backgroundColor: isDark ? _fundoEscuro : _fundoClaro,
       appBar: AppBar(
@@ -790,6 +864,15 @@ class _CentralChatPageState extends ConsumerState<CentralChatPage> {
                 children: [
                   Row(
                     children: [
+                      if (ehPrivada)
+                        const Padding(
+                          padding: EdgeInsets.only(right: 4),
+                          child: Icon(
+                            Icons.lock_rounded,
+                            size: 14,
+                            color: Color(0xFF128C7E),
+                          ),
+                        ),
                       Flexible(
                         child: Text(
                           widget.nomeContato ?? 'Conversa',
@@ -1223,7 +1306,7 @@ class _RespostasRapidasSheetState
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text('Falha ao excluir: $e')));
+            .showSnackBar(SnackBar(content: Text('Falha ao excluir. ${mensagemAmigavel(e)}')));
       }
     }
   }
@@ -1292,7 +1375,7 @@ class _RespostasRapidasSheetState
       if (mounted) {
         ScaffoldMessenger.of(
           context,
-        ).showSnackBar(SnackBar(content: Text('Falha ao cadastrar: $e')));
+        ).showSnackBar(SnackBar(content: Text('Falha ao cadastrar. ${mensagemAmigavel(e)}')));
       }
     }
   }
@@ -1348,7 +1431,7 @@ class _RespostasRapidasSheetState
               loading: () => const Center(child: CircularProgressIndicator()),
               error: (e, _) => Center(
                 child: Text(
-                  'Falha ao carregar respostas rápidas.\n$e',
+                  'Falha ao carregar respostas rápidas.\n${mensagemAmigavel(e)}',
                   textAlign: TextAlign.center,
                 ),
               ),

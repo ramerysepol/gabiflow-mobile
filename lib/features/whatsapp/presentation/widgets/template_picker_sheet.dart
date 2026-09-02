@@ -9,6 +9,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/theme/design_tokens.dart';
 import '../../data/models/whatsapp_models.dart';
 import '../providers/whatsapp_providers.dart';
+import '../../../../core/network/friendly_error.dart';
 
 /// Template escolhido com as variáveis já preenchidas pelo atendente,
 /// prontas para o payload `templateVariables` (chaves "1", "2"…).
@@ -101,7 +102,7 @@ class _TemplatePickerSheetState extends ConsumerState<TemplatePickerSheet> {
           child: Padding(
             padding: const EdgeInsets.all(AppSpacing.xl),
             child: Text(
-              'Falha ao carregar templates.\n$e',
+              'Falha ao carregar templates.\n${mensagemAmigavel(e)}',
               textAlign: TextAlign.center,
             ),
           ),

@@ -7,6 +7,7 @@ import '../../data/models/central_models.dart';
 import '../providers/central_providers.dart';
 import '../widgets/central_visuals.dart';
 import '../widgets/tags_editor_sheet.dart';
+import '../../../../core/network/friendly_error.dart';
 
 /// Painel de Informacoes do contato/conversa (paridade com ContactDetails.tsx):
 /// status, prioridade, departamento, etiquetas, notas internas, janela 24h,
@@ -126,7 +127,7 @@ class _ContatoDetalhesPageState extends ConsumerState<ContatoDetalhesPage> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text('Falha ao atualizar: $e')));
+            .showSnackBar(SnackBar(content: Text('Falha ao atualizar. ${mensagemAmigavel(e)}')));
       }
     }
   }
@@ -140,7 +141,7 @@ class _ContatoDetalhesPageState extends ConsumerState<ContatoDetalhesPage> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Falha ao ${pausar ? 'pausar' : 'retomar'}: $e')));
+            SnackBar(content: Text('Falha ao ${pausar ? 'pausar' : 'retomar'}. ${mensagemAmigavel(e)}')));
       }
     }
   }
@@ -160,7 +161,7 @@ class _ContatoDetalhesPageState extends ConsumerState<ContatoDetalhesPage> {
       if (mounted) {
         setState(() => _salvandoNotas = false);
         ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text('Falha ao salvar notas: $e')));
+            .showSnackBar(SnackBar(content: Text('Falha ao salvar notas. ${mensagemAmigavel(e)}')));
       }
     }
   }

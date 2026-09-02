@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../providers/central_providers.dart';
 import 'central_visuals.dart';
+import '../../../../core/network/friendly_error.dart';
 
 /// Editor de etiquetas de uma conversa: marca/desmarca do catalogo, cria nova
 /// etiqueta com cor, e salva (PUT substitui o array — igual ao web). Retorna a
@@ -82,7 +83,7 @@ class _TagsEditorSheetState extends ConsumerState<TagsEditorSheet> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text('Falha ao criar etiqueta: $e')));
+            .showSnackBar(SnackBar(content: Text('Falha ao criar etiqueta. ${mensagemAmigavel(e)}')));
       }
     }
   }
@@ -100,7 +101,7 @@ class _TagsEditorSheetState extends ConsumerState<TagsEditorSheet> {
       if (mounted) {
         setState(() => _salvando = false);
         ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text('Falha ao salvar: $e')));
+            .showSnackBar(SnackBar(content: Text('Falha ao salvar. ${mensagemAmigavel(e)}')));
       }
     }
   }
@@ -132,7 +133,7 @@ class _TagsEditorSheetState extends ConsumerState<TagsEditorSheet> {
         error: (e, __) => Center(
           child: Padding(
             padding: const EdgeInsets.all(24),
-            child: Text('Falha ao carregar o catálogo:\n$e',
+            child: Text('Falha ao carregar o catálogo.\n${mensagemAmigavel(e)}',
                 textAlign: TextAlign.center),
           ),
         ),

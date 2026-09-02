@@ -11,6 +11,7 @@ import '../../../../core/widgets/app_input_field.dart';
 import '../../../../core/widgets/app_logo.dart';
 import '../../../../core/widgets/primary_button.dart';
 import '../providers/tenant_provider.dart';
+import '../../../../core/network/friendly_error.dart';
 
 /// Tela de entrada do app — a primeira impressão do produto.
 /// Hero escuro "war room" com logo animada, vitrine do que o GabiFlow faz
@@ -81,7 +82,7 @@ class _TenantSetupPageState extends ConsumerState<TenantSetupPage> {
         _showError('Gabinete "$subdomain" não encontrado.');
       }
     } catch (e) {
-      if (mounted) _showError('Erro ao verificar gabinete: $e');
+      if (mounted) _showError('Não foi possível verificar o gabinete. ${mensagemAmigavel(e)}');
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }

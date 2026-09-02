@@ -7,6 +7,7 @@ import '../providers/eleitoral_providers.dart';
 import '../widgets/erro_inline.dart';
 import '../widgets/numero_formatado.dart';
 import 'candidato_mapa_page.dart';
+import '../../../../core/network/friendly_error.dart';
 
 /// Aba MAPA do sub-app Eleitoral — o mapa de calor como destino de primeira
 /// classe: escolhe o candidato e vê a mancha de votos na Bahia, já no modo
@@ -257,7 +258,7 @@ class _BuscaCandidatoSheetState extends ConsumerState<_BuscaCandidatoSheet> {
             child: resultado.when(
               loading: () =>
                   const Center(child: CircularProgressIndicator()),
-              error: (e, _) => Center(child: Text('Falha na busca: $e')),
+              error: (e, _) => Center(child: Text('Falha na busca. ${mensagemAmigavel(e)}')),
               data: (pagina) => pagina.items.isEmpty
                   ? const Center(
                       child: Text('Digite o nome pra buscar.',

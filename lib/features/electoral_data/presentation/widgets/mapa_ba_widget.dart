@@ -14,6 +14,7 @@ import 'seletor_municipio_sheet.dart';
 import 'zonas_drilldown_sheet.dart';
 import 'mapa_controls.dart';
 import 'mapa_legenda.dart';
+import '../../../../core/network/friendly_error.dart';
 
 class MapaBaWidget extends ConsumerStatefulWidget {
   const MapaBaWidget({
@@ -86,7 +87,7 @@ class _MapaBaWidgetState extends ConsumerState<MapaBaWidget>
     return geoAsync.when(
       loading: () => const _MapaSkeleton(),
       error: (e, _) => _MapaError(
-        message: 'Erro ao carregar mapa: $e',
+        message: 'Erro ao carregar o mapa. ${mensagemAmigavel(e)}',
         onRetry: () => ref.invalidate(geoFeaturesProvider),
       ),
       data: (features) => _buildMap(features),

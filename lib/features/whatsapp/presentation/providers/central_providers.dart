@@ -1,8 +1,7 @@
 // Estado da Central de Atendimento.
 //
-// Tempo real por polling (mesma estrategia de fallback da central web:
-// lista a cada 10s, chat aberto a cada 5s). SSE entra numa iteracao futura
-// reaproveitando o padrao ja existente no chat de IA.
+// Tempo real: SSE como gatilho de refresh instantaneo + polling como
+// fallback garantido (lista a cada 15s, chat aberto a cada 8s).
 
 import 'dart:async';
 
@@ -12,6 +11,7 @@ import '../../../../core/providers/core_providers.dart';
 import '../../data/datasources/central_remote_datasource.dart';
 import '../../data/datasources/central_sse_service.dart';
 import '../../data/models/central_models.dart';
+import '../../../../core/network/friendly_error.dart';
 
 final centralDataSourceProvider = Provider<CentralRemoteDataSource>((ref) {
   return CentralRemoteDataSource(ref.watch(apiClientProvider));
@@ -104,7 +104,7 @@ class ConversasNotifier extends StateNotifier<ConversasState> {
     } catch (e) {
       if (!mounted) return;
       // Em polling silencioso mantem a lista atual; so registra o erro.
-      state = state.copyWith(carregando: false, erro: e.toString());
+      state = state.copyWith(carregando: false, erro: mensagemAmigavel(e));
     }
   }
 
@@ -128,6 +128,20 @@ class ConversasNotifier extends StateNotifier<ConversasState> {
     _limite = _pagina;
     state = state.copyWith(busca: texto);
     carregar();
+  }
+
+  /// Remove a conversa da lista na hora (encerrada/arquivada). Sem isto ela
+  /// ficava visivel ate o proximo tick do polling de 15s. O poll seguinte
+  /// confirma o estado real do servidor.
+  void removerConversa(int conversationId) {
+    final restantes = state.conversas
+        .where((c) => c.id != conversationId)
+        .toList(growable: false);
+    if (restantes.length == state.conversas.length) return;
+    state = state.copyWith(
+      conversas: restantes,
+      total: state.total > 0 ? state.total - 1 : 0,
+    );
   }
 
   @override
@@ -229,7 +243,7 @@ class ChatNotifier extends StateNotifier<ChatState> {
       // proximo tick (5s) resolve sozinho. So mostra erro quando ainda nao
       // ha nada na tela (falha real de carregamento inicial).
       if (state.mensagens.isEmpty) {
-        state = state.copyWith(carregando: false, erro: e.toString());
+        state = state.copyWith(carregando: false, erro: mensagemAmigavel(e));
       } else {
         state = state.copyWith(carregando: false);
       }
@@ -279,7 +293,7 @@ class ChatNotifier extends StateNotifier<ChatState> {
       state = state.copyWith(
         mensagens: atualizadas,
         enviando: false,
-        erro: 'Falha ao enviar: $e',
+        erro: 'Falha ao enviar. ${mensagemAmigavel(e)}',
       );
     }
   }
@@ -332,7 +346,7 @@ class ChatNotifier extends StateNotifier<ChatState> {
       state = state.copyWith(
         mensagens: atualizadas,
         enviando: false,
-        erro: 'Falha ao enviar mídia: $e',
+        erro: 'Falha ao enviar mídia. ${mensagemAmigavel(e)}',
       );
     }
   }
@@ -362,7 +376,7 @@ class ChatNotifier extends StateNotifier<ChatState> {
       if (!mounted) return false;
       state = state.copyWith(
         enviando: false,
-        erro: 'Falha ao enviar template: $e',
+        erro: 'Falha ao enviar template. ${mensagemAmigavel(e)}',
       );
       return false;
     }
@@ -380,7 +394,7 @@ class ChatNotifier extends StateNotifier<ChatState> {
       );
       return true;
     } catch (e) {
-      if (mounted) state = state.copyWith(erro: 'Falha ao encaminhar: $e');
+      if (mounted) state = state.copyWith(erro: 'Falha ao encaminhar. ${mensagemAmigavel(e)}');
       return false;
     }
   }
@@ -397,7 +411,7 @@ class ChatNotifier extends StateNotifier<ChatState> {
     } catch (e) {
       if (!mounted) return;
       // Reverte se falhar.
-      state = state.copyWith(mensagens: antes, erro: 'Falha ao excluir: $e');
+      state = state.copyWith(mensagens: antes, erro: 'Falha ao excluir. ${mensagemAmigavel(e)}');
     }
   }
 
@@ -406,7 +420,7 @@ class ChatNotifier extends StateNotifier<ChatState> {
       await _ds.assumirConversa(conversationId, userId);
       return true;
     } catch (e) {
-      if (mounted) state = state.copyWith(erro: e.toString());
+      if (mounted) state = state.copyWith(erro: mensagemAmigavel(e));
       return false;
     }
   }

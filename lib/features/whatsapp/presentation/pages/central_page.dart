@@ -401,6 +401,12 @@ class _ConversaTile extends ConsumerWidget {
       isThreeLine: conversa.tags.isNotEmpty,
       title: Row(
         children: [
+          // Cadeado: conversa privada (assumida por um atendente) — paridade
+          // com o ícone da lista da central web.
+          if (conversa.isPrivate) ...[
+            Icon(Icons.lock_rounded, size: 13, color: cs.outline),
+            const SizedBox(width: 3),
+          ],
           Expanded(
             child: Text(
               conversa.displayName,
