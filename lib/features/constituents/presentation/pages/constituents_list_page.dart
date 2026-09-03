@@ -61,6 +61,31 @@ class _ConstituentsListPageState extends ConsumerState<ConstituentsListPage> {
     }
   }
 
+  // ── Seleção múltipla p/ envio de WhatsApp ──────────────────────────────
+  // Long-press num card inicia a seleção; toque alterna; com 1+ selecionados
+  // aparece a barra com o botão de enviar (um ou vários, como pedido).
+  final Set<String> _selecionados = {};
+  bool get _modoSelecao => _selecionados.isNotEmpty;
+
+  void _toggleSelecao(String id) {
+    HapticFeedback.selectionClick();
+    setState(() {
+      if (!_selecionados.remove(id)) _selecionados.add(id);
+    });
+  }
+
+  Future<void> _enviarSelecionados() async {
+    final ids =
+        _selecionados.map(int.tryParse).whereType<int>().toList();
+    await WhatsAppSendSheet.showBulk(
+      context,
+      filtros: ConstituentFilters.vazios,
+      totalEstimado: ids.length,
+      ids: ids,
+    );
+    if (mounted) setState(() => _selecionados.clear());
+  }
+
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(constituentListProvider);
@@ -79,6 +104,37 @@ class _ConstituentsListPageState extends ConsumerState<ConstituentsListPage> {
                   .read(constituentListProvider.notifier)
                   .aplicarFiltros(f),
             ),
+            if (_modoSelecao)
+              Material(
+                color: Theme.of(context).colorScheme.primaryContainer,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.sm,
+                    vertical: AppSpacing.xs,
+                  ),
+                  child: Row(
+                    children: [
+                      IconButton(
+                        icon: const Icon(Icons.close_rounded),
+                        tooltip: 'Limpar seleção',
+                        onPressed: () =>
+                            setState(() => _selecionados.clear()),
+                      ),
+                      Text(
+                        '${_selecionados.length} selecionado(s)',
+                        style:
+                            const TextStyle(fontWeight: FontWeight.w700),
+                      ),
+                      const Spacer(),
+                      FilledButton.icon(
+                        onPressed: _enviarSelecionados,
+                        icon: const Icon(Icons.send_rounded, size: 18),
+                        label: const Text('Enviar WhatsApp'),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
             Expanded(
               child: RefreshIndicator(
                 onRefresh: () =>
@@ -155,9 +211,13 @@ class _ConstituentsListPageState extends ConsumerState<ConstituentsListPage> {
             child: Center(child: CircularProgressIndicator()),
           );
         }
+        final c = state.items[i];
         return _ConstituentTile(
-          constituent: state.items[i],
+          constituent: c,
           index: i,
+          modoSelecao: _modoSelecao,
+          selecionado: _selecionados.contains(c.id),
+          onToggleSelecao: () => _toggleSelecao(c.id),
         ).animate().fadeIn(delay: Duration(milliseconds: i * 30));
       },
     );
@@ -205,11 +265,22 @@ class _SearchBar extends StatelessWidget {
 // ── Tile com swipe ───────────────────────────────────────────────────────────
 
 class _ConstituentTile extends StatelessWidget {
-  const _ConstituentTile(
-      {required this.constituent, required this.index});
+  const _ConstituentTile({
+    required this.constituent,
+    required this.index,
+    this.modoSelecao = false,
+    this.selecionado = false,
+    this.onToggleSelecao,
+  });
 
   final ConstituentModel constituent;
   final int index;
+
+  /// Seleção múltipla (envio WhatsApp): long-press inicia; em modo seleção o
+  /// toque alterna em vez de abrir o detalhe.
+  final bool modoSelecao;
+  final bool selecionado;
+  final VoidCallback? onToggleSelecao;
 
   String _initials(String nome) {
     final parts = nome.trim().split(' ');
@@ -268,9 +339,17 @@ class _ConstituentTile extends StatelessWidget {
       ),
       child: Card(
         margin: EdgeInsets.zero,
+        color: selecionado
+            ? cs.primaryContainer.withValues(alpha: 0.45)
+            : null,
         child: InkWell(
           borderRadius: BorderRadius.circular(AppRadius.card),
+          onLongPress: onToggleSelecao,
           onTap: () {
+            if (modoSelecao) {
+              onToggleSelecao?.call();
+              return;
+            }
             context.push('/home/constituents/${constituent.id}');
           },
           child: Padding(
@@ -285,25 +364,32 @@ class _ConstituentTile extends StatelessWidget {
                   height: 44,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    gradient: LinearGradient(
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                      colors: [
-                        _corAvatar(constituent.nome),
-                        _corAvatar(constituent.nome)
-                            .withValues(alpha: 0.75),
-                      ],
-                    ),
+                    gradient: selecionado
+                        ? null
+                        : LinearGradient(
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                            colors: [
+                              _corAvatar(constituent.nome),
+                              _corAvatar(constituent.nome)
+                                  .withValues(alpha: 0.75),
+                            ],
+                          ),
+                    color: selecionado ? cs.primary : null,
                   ),
                   alignment: Alignment.center,
-                  child: Text(
-                    _initials(constituent.nome),
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w800,
-                      fontSize: 14,
-                    ),
-                  ),
+                  child: selecionado
+                      // Avatar vira check quando selecionado (estilo WhatsApp)
+                      ? Icon(Icons.check_rounded,
+                          color: cs.onPrimary, size: 24)
+                      : Text(
+                          _initials(constituent.nome),
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w800,
+                            fontSize: 14,
+                          ),
+                        ),
                 ),
                 const SizedBox(width: AppSpacing.md),
                 Expanded(

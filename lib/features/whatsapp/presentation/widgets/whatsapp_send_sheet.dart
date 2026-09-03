@@ -21,6 +21,7 @@ class WhatsAppSendSheet extends ConsumerStatefulWidget {
     this.filtros,
     this.search,
     this.totalEstimado,
+    this.ids,
   });
 
   /// Envio individual para um munícipe.
@@ -30,6 +31,9 @@ class WhatsAppSendSheet extends ConsumerStatefulWidget {
   final ConstituentFilters? filtros;
   final String? search;
   final int? totalEstimado;
+
+  /// Seleção manual na grid (um ou vários) — quando presente, ignora filtros.
+  final List<int>? ids;
 
   bool get emMassa => destinatario == null;
 
@@ -46,6 +50,7 @@ class WhatsAppSendSheet extends ConsumerStatefulWidget {
     required ConstituentFilters filtros,
     String? search,
     int? totalEstimado,
+    List<int>? ids,
   }) =>
       showModalBottomSheet(
         context: context,
@@ -55,6 +60,7 @@ class WhatsAppSendSheet extends ConsumerStatefulWidget {
           filtros: filtros,
           search: search,
           totalEstimado: totalEstimado,
+          ids: ids,
         ),
       );
 
@@ -298,6 +304,7 @@ class _WhatsAppSendSheetState extends ConsumerState<WhatsAppSendSheet> {
           mapeamento: mapeamento,
           filtros: widget.filtros ?? ConstituentFilters.vazios,
           search: widget.search,
+          ids: widget.ids,
           intervaloSegundos: _intervaloSegundos,
           headerType: _headerTypeParaEnvio,
           headerUrl: _headerTypeParaEnvio != null ? _headerMediaUrl : null,
@@ -764,6 +771,9 @@ class _WhatsAppSendSheetState extends ConsumerState<WhatsAppSendSheet> {
   }
 
   String _resumoFiltros() {
+    if ((widget.ids ?? const []).isNotEmpty) {
+      return 'Seleção manual: ${widget.ids!.length} munícipe(s)';
+    }
     final f = widget.filtros ?? ConstituentFilters.vazios;
     final partes = <String>[
       if (f.aniversariantes == 'hoje') 'Aniversariantes de hoje',

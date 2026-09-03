@@ -28,7 +28,8 @@ abstract class WhatsAppRemoteDataSource {
   /// Faz upload de mídia (imagem) e retorna a URL pública.
   Future<String> uploadMedia(String filePath, {String mediaType = 'image'});
 
-  /// Envio em massa pelos filtros ativos. Retorna o id da campanha.
+  /// Envio em massa pelos filtros ativos OU por seleção manual (ids).
+  /// Retorna o id da campanha.
   Future<int> sendBulk({
     required String tipo,
     String? nome,
@@ -38,6 +39,7 @@ abstract class WhatsAppRemoteDataSource {
     Map<String, MapeamentoVariavel>? mapeamento,
     ConstituentFilters filtros = ConstituentFilters.vazios,
     String? search,
+    List<int>? ids,
     int intervaloSegundos = 3,
     String? headerType,
     String? headerUrl,
@@ -162,6 +164,7 @@ class WhatsAppRemoteDataSourceImpl implements WhatsAppRemoteDataSource {
     Map<String, MapeamentoVariavel>? mapeamento,
     ConstituentFilters filtros = ConstituentFilters.vazios,
     String? search,
+    List<int>? ids,
     int intervaloSegundos = 3,
     String? headerType,
     String? headerUrl,
@@ -171,6 +174,8 @@ class WhatsAppRemoteDataSourceImpl implements WhatsAppRemoteDataSource {
       '/api/mobile/whatsapp/send-bulk',
       data: {
         'tipo': tipo,
+        // Seleção manual da grid (um ou vários); com ids o backend ignora filtros.
+        if (ids != null && ids.isNotEmpty) 'ids': ids,
         if (nome != null && nome.isNotEmpty) 'nome': nome,
         if (templateName != null) 'template_name': templateName,
         if (language != null) 'language': language,
