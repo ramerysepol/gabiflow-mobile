@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 
+import '../../../../core/network/friendly_error.dart';
 import '../../../../core/theme/design_tokens.dart';
 import '../../../../core/widgets/primary_button.dart';
 import '../../../constituents/data/models/constituent_extras.dart';
@@ -229,8 +230,7 @@ class _WhatsAppSendSheetState extends ConsumerState<WhatsAppSendSheet> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              'Falha ao enviar imagem: '
-              '${e.toString().replaceFirst('Exception: ', '')}',
+              'Falha ao enviar imagem. ${mensagemAmigavel(e)}',
             ),
           ),
         );
@@ -310,9 +310,7 @@ class _WhatsAppSendSheetState extends ConsumerState<WhatsAppSendSheet> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(
-              e.toString().replaceFirst('Exception: ', ''),
-            ),
+            content: Text(mensagemAmigavel(e)),
           ),
         );
       }
