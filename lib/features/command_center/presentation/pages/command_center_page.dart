@@ -9,6 +9,7 @@ import '../../../electoral_data/presentation/providers/eleitoral_providers.dart'
 import '../../data/models/ia_contexto_model.dart';
 import '../../data/models/ia_models.dart';
 import '../providers/command_center_providers.dart';
+import '../widgets/bairro_search_card.dart';
 import '../widgets/ia_candidato_picker.dart';
 import '../widgets/ia_visualization_view.dart';
 
@@ -72,6 +73,7 @@ class CommandCenterPage extends ConsumerWidget {
                     electionLabel: election?.labelCompleto ?? '',
                   ),
                   const _AskBar(),
+                  const BairroSearchCard(),
                   const SizedBox(height: 8),
                   const _InsightDiaCard(),
                   const _AlertasSection(),
@@ -246,7 +248,8 @@ class _HeroHeader extends StatelessWidget {
                         backgroundColor:
                             cs.onPrimary.withValues(alpha: 0.22),
                         backgroundImage: contexto.fotoUrl != null
-                            ? CachedNetworkImageProvider(contexto.fotoUrl!)
+                            ? CachedNetworkImageProvider(contexto.fotoUrl!,
+                                maxWidth: 200)
                             : null,
                         child: contexto.fotoUrl == null
                             ? Text(
@@ -392,6 +395,7 @@ class _AskBar extends ConsumerWidget {
 
   static const _sugestoes = [
     'Onde eu posso crescer?',
+    'Quais são meus melhores bairros?',
     'Quais municípios têm votos mas o gabinete não atua?',
     'Quem foram meus maiores adversários?',
     'Como está minha cobertura territorial?',

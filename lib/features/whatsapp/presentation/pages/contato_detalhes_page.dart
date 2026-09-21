@@ -192,7 +192,9 @@ class _ContatoDetalhesPageState extends ConsumerState<ContatoDetalhesPage> {
               backgroundColor: cs.primaryContainer,
               foregroundImage: (d.profilePictureUrl != null &&
                       d.profilePictureUrl!.startsWith('http'))
-                  ? NetworkImage(d.profilePictureUrl!)
+                  ? ResizeImage(NetworkImage(d.profilePictureUrl!),
+                      width: (56 * MediaQuery.devicePixelRatioOf(context))
+                          .round())
                   : null,
               child: const Icon(Icons.person_rounded),
             ),

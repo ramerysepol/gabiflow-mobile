@@ -957,7 +957,9 @@ class _NovaInteracaoSheetState extends ConsumerState<_NovaInteracaoSheet> {
   Widget build(BuildContext context) {
     final tt = Theme.of(context).textTheme;
 
-    return Padding(
+    // SingleChildScrollView: o campo tem autofocus (teclado abre junto com o
+    // sheet) e o Column sem scroll estourava em "tela - teclado".
+    return SingleChildScrollView(
       padding: EdgeInsets.only(
         left: 20,
         right: 20,

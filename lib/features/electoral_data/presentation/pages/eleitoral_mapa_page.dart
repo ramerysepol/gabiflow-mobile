@@ -1,3 +1,4 @@
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -28,7 +29,12 @@ class _EleitoralMapaPageState extends ConsumerState<EleitoralMapaPage> {
       context: context,
       isScrollControlled: true,
       showDragHandle: true,
-      builder: (_) => const _BuscaCandidatoSheet(),
+      // Padding(viewInsets): sem ele a lista de resultados ficava escondida
+      // atras do teclado (o campo de busca tem autofocus).
+      builder: (ctx) => Padding(
+        padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(ctx).bottom),
+        child: const _BuscaCandidatoSheet(),
+      ),
     );
     if (escolhido != null && mounted) {
       setState(() => _candidato = escolhido);
@@ -232,8 +238,13 @@ class _BuscaCandidatoSheetState extends ConsumerState<_BuscaCandidatoSheet> {
   Widget build(BuildContext context) {
     final resultado = ref.watch(comparacaoCandidatoBuscaProvider);
 
+    // Altura limitada ao espaco livre acima do teclado (o chamador aplica
+    // Padding(viewInsets)); 0.7 da tela fixo estourava com o teclado aberto.
+    final alturaTela = MediaQuery.sizeOf(context).height;
+    final teclado = MediaQuery.viewInsetsOf(context).bottom;
+    final altura = math.min(alturaTela * 0.7, alturaTela - teclado - 96);
     return SizedBox(
-      height: MediaQuery.of(context).size.height * 0.7,
+      height: math.max(altura, 220),
       child: Column(
         children: [
           Padding(

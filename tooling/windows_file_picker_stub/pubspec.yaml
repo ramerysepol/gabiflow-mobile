@@ -1,0 +1,23 @@
+name: windows_file_picker
+description: >-
+  Stub local da implementacao Windows do file_picker. O GabiFlow nao e'
+  compilado para Windows; o pacote real exige win32 6.x, que conflita com
+  package_info_plus/flutter_secure_storage (win32 5.x) e quebra a compilacao
+  Dart. Este stub tira o win32 6.x do grafo de dependencias.
+version: 2.0.0
+publish_to: none
+
+environment:
+  sdk: ^3.8.1
+  flutter: ">=3.38.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+flutter:
+  plugin:
+    implements: file_picker
+    platforms:
+      windows:
+        dartPluginClass: WindowsFilePickerStub

@@ -69,6 +69,18 @@ class IaToolActivity {
         return 'Cruzando votos × gabinete';
       case 'sentimento_whatsapp':
         return 'Analisando WhatsApp';
+      case 'votos_por_bairro':
+        return 'Agregando votos por bairro';
+      case 'ranking_no_bairro':
+        return 'Levantando ranking no bairro';
+      case 'bairros_fracos':
+        return 'Buscando bairros para crescer';
+      case 'comparar_bairros_entre_eleicoes':
+        return 'Comparando eleições por bairro';
+      case 'base_gabinete_por_bairro':
+        return 'Cruzando cadastro × bairros';
+      case 'eleicoes_disponiveis':
+        return 'Listando eleições carregadas';
       default:
         return tool.replaceAll('_', ' ');
     }
@@ -102,6 +114,18 @@ class IaChatMessage {
     this.thinkingLabel,
     this.error,
   });
+
+  /// Formato enviado a /api/mobile/eleitoral/ia/exportar-pdf.
+  Map<String, dynamic> toExportJson() => {
+        'role': role,
+        'text': text,
+        'tools': [
+          for (final t in tools) {'tool': t.tool, 'rows_count': t.rowsCount},
+        ],
+        'visualizations': [
+          for (final v in visualizations) {'kind': v.kind, 'data': v.data},
+        ],
+      };
 
   IaChatMessage copyWith({
     String? text,

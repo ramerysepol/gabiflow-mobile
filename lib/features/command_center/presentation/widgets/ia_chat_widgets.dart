@@ -1,19 +1,23 @@
 import 'package:flutter/material.dart';
 
 import '../../data/models/ia_chat_models.dart';
+import 'ia_exportar_conversa_pdf.dart';
 import 'ia_visualization_view.dart';
 import 'simple_markdown.dart';
 
 /// Bolha de mensagem do chat (usuário ou assistente).
+/// [pergunta] é a mensagem do usuário que originou esta resposta (usada na
+/// exportação em PDF da resposta).
 class IaChatBubble extends StatelessWidget {
-  const IaChatBubble({super.key, required this.message});
+  const IaChatBubble({super.key, required this.message, this.pergunta});
 
   final IaChatMessage message;
+  final IaChatMessage? pergunta;
 
   @override
   Widget build(BuildContext context) {
     if (message.role == 'user') return _UserBubble(text: message.text);
-    return _AssistantBubble(message: message);
+    return _AssistantBubble(message: message, pergunta: pergunta);
   }
 }
 
@@ -52,9 +56,10 @@ class _UserBubble extends StatelessWidget {
 }
 
 class _AssistantBubble extends StatelessWidget {
-  const _AssistantBubble({required this.message});
+  const _AssistantBubble({required this.message, this.pergunta});
 
   final IaChatMessage message;
+  final IaChatMessage? pergunta;
 
   @override
   Widget build(BuildContext context) {
@@ -104,6 +109,12 @@ class _AssistantBubble extends StatelessWidget {
           // ── Visualizações inline ───────────────────────────────────────
           for (final viz in message.visualizations)
             IaVisualizationView(viz: viz),
+
+          // ── Exportar (resposta concluída) ──────────────────────────────
+          if (!message.isStreaming &&
+              message.error == null &&
+              message.text.isNotEmpty)
+            IaExportarRespostaBar(resposta: message, pergunta: pergunta),
 
           // ── Erro ───────────────────────────────────────────────────────
           if (message.error != null)

@@ -13,11 +13,15 @@ class AppLogo extends StatelessWidget {
   
   @override
   Widget build(BuildContext context) {
+    // Decodifica ja no tamanho exibido (evita bitmap em resolucao total na memoria).
+    final dpr = MediaQuery.devicePixelRatioOf(context);
     return Image.asset(
       'assets/images/gabiflow-hd.png',
       height: height,
       width: width,
       fit: BoxFit.contain,
+      cacheWidth: width != null ? (width! * dpr).round() : null,
+      cacheHeight: width == null ? ((height ?? 100) * dpr).round() : null,
       errorBuilder: (context, error, stackTrace) {
         // Fallback caso a imagem não carregue
         return Container(

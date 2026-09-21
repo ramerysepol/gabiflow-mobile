@@ -29,11 +29,18 @@ class CentralSseService {
   bool _fechado = false;
   int _tentativas = 0;
 
+  /// Geracao da conexao: uma reconexao mais nova invalida callbacks/erros da
+  /// anterior (evita conectar duas vezes quando [reconectarAgora] cancela um
+  /// conectar() ainda em andamento).
+  int _geracao = 0;
+
   Future<void> conectar() async {
     if (_fechado) return;
+    final geracao = ++_geracao;
     _cancel = CancelToken();
     try {
       final body = await _ds.conectarSse(_cancel!);
+      if (_fechado || geracao != _geracao) return;
       _tentativas = 0;
       _sub = body.stream
           .cast<List<int>>()
@@ -60,13 +67,29 @@ class CentralSseService {
               }
               _agendar();
             },
-            onError: (_) => _reconectar(),
-            onDone: _reconectar,
+            onError: (_) {
+              if (geracao == _geracao) _reconectar();
+            },
+            onDone: () {
+              if (geracao == _geracao) _reconectar();
+            },
             cancelOnError: true,
           );
     } catch (_) {
-      _reconectar();
+      if (geracao == _geracao) _reconectar();
     }
+  }
+
+  /// Reconecta na hora. Usado quando o app volta do background: o socket
+  /// antigo esta morto e o backoff do erro levaria ate 30s para perceber.
+  void reconectarAgora() {
+    if (_fechado) return;
+    _reconexao?.cancel();
+    _sub?.cancel();
+    _sub = null;
+    _cancel?.cancel('retomada');
+    _tentativas = 0;
+    conectar();
   }
 
   void _tratarTyping(bool digitando, String payload) {

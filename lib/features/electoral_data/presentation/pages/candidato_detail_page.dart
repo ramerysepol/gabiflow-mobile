@@ -227,6 +227,8 @@ class _HeroCandidato extends StatelessWidget {
                     imageUrl: fotoUrl!,
                     width: 96,
                     height: 96,
+                    memCacheWidth:
+                        (96 * MediaQuery.devicePixelRatioOf(context)).round(),
                     fit: BoxFit.cover,
                     errorWidget: (_, __, ___) => Text(
                       inicial,

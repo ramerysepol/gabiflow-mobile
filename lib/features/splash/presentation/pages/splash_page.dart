@@ -1,5 +1,6 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
-import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -19,21 +20,50 @@ class SplashPage extends ConsumerStatefulWidget {
 
 class _SplashPageState extends ConsumerState<SplashPage>
     with SingleTickerProviderStateMixin {
-  late final AnimationController _progressController = AnimationController(
+  // Uma unica timeline (0,3 s de espera + 2,2 s = roteamento): fundo, marca
+  // descendo + nome subindo ate' formar a logo, brilho e progresso.
+  late final AnimationController _controller = AnimationController(
     vsync: this,
-    duration: const Duration(milliseconds: 2500),
+    duration: const Duration(milliseconds: 2200),
   );
+  late final Animation<double> _fundo = CurvedAnimation(
+    parent: _controller,
+    curve: const Interval(0.0, 0.45, curve: Curves.easeOut),
+  );
+  // Marca desce e nome sobe ao mesmo tempo, encontrando-se na logo completa.
+  late final Animation<double> _encontro = CurvedAnimation(
+    parent: _controller,
+    curve: const Interval(0.05, 0.62, curve: Curves.easeOutCubic),
+  );
+  late final Animation<double> _brilho = CurvedAnimation(
+    parent: _controller,
+    curve: const Interval(0.62, 0.90, curve: Curves.easeInOut),
+  );
+  late final Animation<double> _rodape = CurvedAnimation(
+    parent: _controller,
+    curve: const Interval(0.58, 0.78, curve: Curves.easeOut),
+  );
+
+  // A logo so' entra no ShaderMask na hora do brilho: o ShaderMask recorta ao
+  // proprio tamanho e esconderia as partes vindo de fora. A GlobalKey
+  // reparenta o subtree sem recriar as imagens.
+  final _logoKey = GlobalKey();
 
   @override
   void initState() {
     super.initState();
-    _progressController.forward();
+    // Pequena espera antes de animar: garante que o primeiro quadro ja' foi
+    // exibido (o splash do sistema Android so' sai depois dele), para o
+    // encontro marca + nome nao acontecer "escondido".
+    Future<void>.delayed(const Duration(milliseconds: 300), () {
+      if (mounted) _controller.forward();
+    });
     _checkInitialSetup();
   }
 
   @override
   void dispose() {
-    _progressController.dispose();
+    _controller.dispose();
     super.dispose();
   }
 
@@ -88,11 +118,10 @@ class _SplashPageState extends ConsumerState<SplashPage>
     try {
       final client = ApiClient();
       client.updateBaseUrl(subdomain);
-      final res = await client.get<Map<String, dynamic>>(
-        '/api/mobile/auth/me',
-      );
+      final res = await client.get<Map<String, dynamic>>('/api/mobile/auth/me');
       final data = res.data;
-      final ok = res.statusCode == 200 &&
+      final ok =
+          res.statusCode == 200 &&
           data != null &&
           data['success'] == true &&
           data['user'] is Map;
@@ -113,67 +142,177 @@ class _SplashPageState extends ConsumerState<SplashPage>
     }
   }
 
-  @override
-  Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final bg = isDark ? AppColors.surfaceDefaultDark : AppColors.surfaceDefaultLight;
-
-    return Scaffold(
-      backgroundColor: bg,
-      body: SafeArea(
-        child: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              // Logo 3D oficial GabiFlow
-              Image.asset(
-                'assets/images/gabiflow-hd.png',
-                width: 260,
-                fit: BoxFit.contain,
-              )
-                  .animate()
-                  .fadeIn(delay: 200.ms, duration: 700.ms)
-                  .scale(
-                    begin: const Offset(0.85, 0.85),
-                    end: const Offset(1.0, 1.0),
-                    duration: 700.ms,
-                    curve: Curves.easeOutCubic,
-                  )
-                  .then(delay: 200.ms)
-                  .shimmer(
-                    duration: 1400.ms,
-                    color: Colors.white.withValues(alpha: 0.35),
-                  ),
-              const SizedBox(height: AppSpacing.xl),
-              SizedBox(
-                width: 200,
-                child: AnimatedBuilder(
-                  animation: _progressController,
-                  builder: (_, __) => LinearProgressIndicator(
-                    value: _progressController.value,
-                    backgroundColor: Theme.of(context)
-                        .colorScheme
-                        .primary
-                        .withValues(alpha: 0.15),
-                    borderRadius: BorderRadius.circular(AppRadius.full),
-                  ),
-                ),
-              ).animate().fadeIn(delay: 600.ms, duration: 400.ms),
-              const SizedBox(height: AppSpacing.md),
-              Text(
-                'Carregando...',
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: isDark
-                          ? AppColors.neutral600Dark
-                          : AppColors.neutral600Light,
-                    ),
-              ).animate().fadeIn(delay: 700.ms, duration: 400.ms),
-            ],
-          ),
+  /// Circulo suave de fundo que cresce e aparece junto com a marca.
+  Widget _blob(double diametro, Color cor) {
+    return Transform.scale(
+      scale: 0.7 + 0.3 * _fundo.value,
+      child: Opacity(
+        opacity: _fundo.value,
+        child: Container(
+          width: diametro,
+          height: diametro,
+          decoration: BoxDecoration(color: cor, shape: BoxShape.circle),
         ),
       ),
     );
   }
-}
 
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final cs = Theme.of(context).colorScheme;
+    final bg = isDark
+        ? AppColors.surfaceDefaultDark
+        : AppColors.surfaceDefaultLight;
+    final corTexto = isDark
+        ? AppColors.neutral600Dark
+        : AppColors.neutral600Light;
+
+    // Logo oficial (marca em cima, nome embaixo). A mesma imagem e' recortada
+    // em duas partes para animar marca e nome separadamente.
+    const proporcao = 2708 / 3907; // altura/largura do PNG
+    const corteMarca = 0.69; // fracao superior da imagem = marca "G"
+    final largura = math.min(MediaQuery.sizeOf(context).width * 0.66, 280.0);
+    final altura = largura * proporcao;
+
+    Widget parte({required bool marca}) {
+      return ClipRect(
+        child: Align(
+          alignment: marca ? Alignment.topCenter : Alignment.bottomCenter,
+          heightFactor: marca ? corteMarca : 1 - corteMarca,
+          child: Image.asset(
+            'assets/images/gabiflow-hd.png',
+            width: largura,
+            height: altura,
+            fit: BoxFit.contain,
+            filterQuality: FilterQuality.medium,
+          ),
+        ),
+      );
+    }
+
+    return Scaffold(
+      backgroundColor: bg,
+      body: AnimatedBuilder(
+        animation: _controller,
+        builder: (context, _) {
+          final v = _encontro.value; // 0 = separados, 1 = logo formada
+          // Ambas as partes comecam VISIVEIS: a marca perto do topo da tela e
+          // o nome perto da base, e percorrem o mesmo caminho ate' se encaixar.
+          final alturaTela = MediaQuery.sizeOf(context).height;
+          final percurso = ((alturaTela - altura) / 2 - 96).clamp(120.0, 360.0);
+
+          final logo = SizedBox(
+            key: _logoKey,
+            width: largura,
+            height: altura,
+            child: Stack(
+              clipBehavior: Clip.none,
+              children: [
+                // Marca "G": desce de cima ate' a posicao final
+                Positioned(
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  child: Transform.translate(
+                    offset: Offset(0, -percurso * (1 - v)),
+                    child: parte(marca: true),
+                  ),
+                ),
+                // Nome "GabiFlow": sobe de baixo ate' encaixar
+                Positioned(
+                  bottom: 0,
+                  left: 0,
+                  right: 0,
+                  child: Transform.translate(
+                    offset: Offset(0, percurso * (1 - v)),
+                    child: parte(marca: false),
+                  ),
+                ),
+              ],
+            ),
+          );
+
+          return Stack(
+            children: [
+              // Fundo: dois circulos nas cores do gabinete
+              Positioned(
+                top: -80,
+                left: -70,
+                child: _blob(
+                  250,
+                  cs.primary.withValues(alpha: isDark ? 0.22 : 0.14),
+                ),
+              ),
+              Positioned(
+                bottom: -110,
+                right: -60,
+                child: _blob(
+                  300,
+                  cs.tertiary.withValues(alpha: isDark ? 0.20 : 0.13),
+                ),
+              ),
+              SafeArea(
+                child: Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      // Logo (marca + nome), com brilho diagonal no final
+                      if (_brilho.value > 0)
+                        ShaderMask(
+                          blendMode: BlendMode.srcATop,
+                          shaderCallback: (rect) {
+                            final dx = (_brilho.value * 2.4 - 1.2) * rect.width;
+                            return LinearGradient(
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                              colors: [
+                                Colors.white.withValues(alpha: 0),
+                                Colors.white.withValues(alpha: 0.55),
+                                Colors.white.withValues(alpha: 0),
+                              ],
+                              stops: const [0.38, 0.5, 0.62],
+                            ).createShader(rect.translate(dx, 0));
+                          },
+                          child: logo,
+                        )
+                      else
+                        logo,
+                      const SizedBox(height: AppSpacing.xl),
+                      Opacity(
+                        opacity: _rodape.value,
+                        child: Column(
+                          children: [
+                            SizedBox(
+                              width: 200,
+                              child: LinearProgressIndicator(
+                                value: _controller.value,
+                                backgroundColor: cs.primary.withValues(
+                                  alpha: 0.15,
+                                ),
+                                borderRadius: BorderRadius.circular(
+                                  AppRadius.full,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: AppSpacing.md),
+                            Text(
+                              'Carregando...',
+                              style: Theme.of(
+                                context,
+                              ).textTheme.bodyMedium?.copyWith(color: corTexto),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+}

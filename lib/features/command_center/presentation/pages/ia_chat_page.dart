@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/command_center_providers.dart';
 import '../widgets/ia_candidato_picker.dart';
 import '../widgets/ia_chat_widgets.dart';
+import '../widgets/ia_exportar_conversa_pdf.dart';
 
 /// Chat streaming do Command Center IA.
 /// Cada resposta mostra as consultas reais executadas (tools) e
@@ -95,6 +96,13 @@ class _IaChatPageState extends ConsumerState<IaChatPage> {
           ],
         ),
         actions: [
+          if (state.messages.isNotEmpty && !state.isStreaming)
+            IconButton(
+              icon: const Icon(Icons.picture_as_pdf_outlined),
+              tooltip: 'Exportar conversa em PDF',
+              onPressed: () =>
+                  exportarConversaPdf(context, ref, state.messages),
+            ),
           if (state.messages.isNotEmpty)
             IconButton(
               icon: const Icon(Icons.delete_sweep_outlined),
@@ -115,8 +123,12 @@ class _IaChatPageState extends ConsumerState<IaChatPage> {
                     controller: _scrollCtrl,
                     padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
                     itemCount: state.messages.length,
-                    itemBuilder: (_, i) =>
-                        IaChatBubble(message: state.messages[i]),
+                    itemBuilder: (_, i) => IaChatBubble(
+                      message: state.messages[i],
+                      pergunta: i > 0 && state.messages[i - 1].role == 'user'
+                          ? state.messages[i - 1]
+                          : null,
+                    ),
                   ),
           ),
 

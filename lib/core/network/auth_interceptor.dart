@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:dio/dio.dart';
@@ -21,6 +22,42 @@ import '../services/storage_service.dart';
 class AuthInterceptor extends Interceptor {
   /// Single-flight: renovação em andamento compartilhada entre requisições.
   static Future<_RefreshResult>? _refreshInFlight;
+
+  /// Avisa o app quando a sessão foi encerrada por refresh NEGADO (token
+  /// expirado/revogado). Quem escuta (GabiFlowApp) leva o usuário ao login —
+  /// antes disso o app ficava "logado" com sessão morta e toda tela mostrava
+  /// erro de conexão (visto na central de atendimento após tempo parado).
+  static final _sessaoExpiradaCtrl = StreamController<void>.broadcast();
+  static Stream<void> get onSessaoExpirada => _sessaoExpiradaCtrl.stream;
+
+  static void _avisarSessaoExpirada() {
+    SessaoExpiradaAviso.pendente = true;
+    if (!_sessaoExpiradaCtrl.isClosed) _sessaoExpiradaCtrl.add(null);
+  }
+
+  /// Renovação proativa, chamada ao voltar do background: se o access token
+  /// (1h) já venceu ou vence em menos de [margem], renova ANTES de as telas
+  /// dispararem várias requisições com token vencido (cada uma tomaria 401 e
+  /// entraria na fila do refresh). Retorna false só se a sessão morreu.
+  static Future<bool> renovarSeNecessario({
+    Duration margem = const Duration(minutes: 5),
+  }) async {
+    final token = await StorageService.getAccessToken();
+    if (token == null || token.isEmpty) return false;
+    final exp = expiracaoDoJwt(token);
+    if (exp != null && exp.difference(DateTime.now()) > margem) return true;
+
+    LoggerService.i('Token vencido/perto de vencer ao retomar — renovando');
+    final r = await _refreshTokens();
+    if (r == _RefreshResult.denied) {
+      final atual = await StorageService.getAccessToken();
+      if (atual != null && atual != token) return true; // sessão trocada
+      await StorageService.clearAuthDataOnly();
+      _avisarSessaoExpirada();
+      return false;
+    }
+    return true;
+  }
 
   @override
   void onRequest(
@@ -132,6 +169,7 @@ class AuthInterceptor extends Interceptor {
         }
         LoggerService.w('Refresh negado pelo servidor — limpando sessão');
         await StorageService.clearAuthDataOnly();
+        _avisarSessaoExpirada();
       }
       return null;
     }
@@ -234,6 +272,36 @@ class AuthInterceptor extends Interceptor {
       LoggerService.e('Erro ao renovar token', e);
       return _RefreshResult.error;
     }
+  }
+}
+
+/// Lê o claim `exp` de um JWT sem validar assinatura (uso exclusivo para
+/// decidir renovação proativa). Retorna null se não conseguir decodificar.
+DateTime? expiracaoDoJwt(String token) {
+  try {
+    final partes = token.split('.');
+    if (partes.length != 3) return null;
+    final payload =
+        utf8.decode(base64Url.decode(base64Url.normalize(partes[1])));
+    final map = jsonDecode(payload);
+    final exp = map is Map ? map['exp'] : null;
+    if (exp is num) {
+      return DateTime.fromMillisecondsSinceEpoch(exp.toInt() * 1000);
+    }
+  } catch (_) {
+    // token malformado: trata como "sem exp"
+  }
+  return null;
+}
+
+/// Aviso "sua sessão expirou", consumido pela tela de login ao abrir.
+class SessaoExpiradaAviso {
+  static bool pendente = false;
+
+  static bool consumir() {
+    final p = pendente;
+    pendente = false;
+    return p;
   }
 }
 

@@ -565,6 +565,11 @@ class CentralRemoteDataSource {
       options: await _authOptions(),
       cancelToken: cancelToken,
     );
+    // validateStatus < 500: um 401/403 chega como resposta normal com corpo
+    // JSON, que nao e SSE. Lancar faz o servico reconectar com backoff.
+    if (resp.statusCode != 200 || resp.data == null) {
+      throw Exception('SSE indisponivel (HTTP ${resp.statusCode})');
+    }
     return resp.data!;
   }
 

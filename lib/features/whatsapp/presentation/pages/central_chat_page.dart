@@ -1,3 +1,4 @@
+import 'dart:math' as math;
 import 'dart:async';
 import 'dart:io';
 
@@ -451,8 +452,7 @@ class _CentralChatPageState extends ConsumerState<CentralChatPage> {
     var tipo = 'image';
 
     if (escolha == 'documento') {
-      final resultado = await FilePicker.platform.pickFiles();
-      final f = resultado?.files.single;
+      final f = await FilePicker.pickFile();
       if (f?.path == null) return;
       caminho = f!.path;
       nome = f.name;
@@ -562,6 +562,7 @@ class _CentralChatPageState extends ConsumerState<CentralChatPage> {
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
+        scrollable: true,
         title: const Text('Agendar mensagem'),
         content: Column(
           mainAxisSize: MainAxisSize.min,
@@ -730,6 +731,7 @@ class _CentralChatPageState extends ConsumerState<CentralChatPage> {
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setLocal) => AlertDialog(
+          scrollable: true,
           title: const Text('Encerrar atendimento'),
           content: SizedBox(
             width: 340,
@@ -882,7 +884,9 @@ class _CentralChatPageState extends ConsumerState<CentralChatPage> {
               backgroundColor: const Color(0xFF25D366).withValues(alpha: 0.2),
               foregroundImage:
                   (widget.fotoUrl != null && widget.fotoUrl!.startsWith('http'))
-                  ? NetworkImage(widget.fotoUrl!)
+                  ? ResizeImage(NetworkImage(widget.fotoUrl!),
+                      width: (36 * MediaQuery.devicePixelRatioOf(context))
+                          .round())
                   : null,
               onForegroundImageError: widget.fotoUrl != null
                   ? (_, __) {}
@@ -1366,6 +1370,7 @@ class _RespostasRapidasSheetState
     final salvar = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
+        scrollable: true,
         title: const Text('Nova resposta rápida'),
         content: SizedBox(
           width: 320,
@@ -1432,8 +1437,14 @@ class _RespostasRapidasSheetState
   @override
   Widget build(BuildContext context) {
     final respostas = ref.watch(respostasRapidasProvider);
+    // Altura limitada ao espaco livre ACIMA do teclado: o chamador aplica
+    // Padding(viewInsets) e 0.65 da tela nao cabia com o teclado aberto
+    // (overflow ao focar a busca).
+    final alturaTela = MediaQuery.sizeOf(context).height;
+    final teclado = MediaQuery.viewInsetsOf(context).bottom;
+    final altura = math.min(alturaTela * 0.65, alturaTela - teclado - 96);
     return SizedBox(
-      height: MediaQuery.of(context).size.height * 0.65,
+      height: math.max(altura, 220),
       child: Column(
         children: [
           Padding(

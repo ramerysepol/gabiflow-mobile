@@ -270,12 +270,17 @@ class _Imagem extends StatelessWidget {
     final url = mensagem.mediaUrl;
 
     Widget img;
+    // Miniatura do chat: decodifica no maximo na largura da tela (memoria).
+    final cacheW =
+        (MediaQuery.sizeOf(context).width * MediaQuery.devicePixelRatioOf(context))
+            .round();
     if (local != null) {
-      img = Image.file(File(local), fit: BoxFit.cover);
+      img = Image.file(File(local), fit: BoxFit.cover, cacheWidth: cacheW);
     } else if (url != null) {
       img = Image.network(
         url,
         fit: BoxFit.cover,
+        cacheWidth: cacheW,
         loadingBuilder: (_, child, progress) => progress == null
             ? child
             : Container(

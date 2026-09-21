@@ -4,6 +4,10 @@ import 'package:flutter/cupertino.dart' show CupertinoPage;
 import 'package:flutter/widgets.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../features/acao_social/presentation/pages/acao_social_evento_page.dart';
+import '../../features/acao_social/presentation/pages/acao_social_eventos_page.dart';
+import '../../features/acao_social/presentation/pages/cadastro_municipe_page.dart';
+import '../../features/acao_social/presentation/pages/ficha_atendimento_page.dart';
 import '../../features/agenda/presentation/pages/agenda_page.dart';
 import '../../features/agenda/presentation/pages/event_detail_page.dart';
 import '../../features/agenda/presentation/pages/event_form_page.dart';
@@ -50,6 +54,10 @@ import '../../features/electoral_data/presentation/pages/simulador_page.dart';
 ///     /home/demands      → DemandsListPage
 ///     /home/demands/new  → DemandFormPage
 ///     /home/demands/:id  → DemandDetailPage
+///     /home/acao-social                          → AcaoSocialEventosPage
+///     /home/acao-social/evento/:id               → AcaoSocialEventoPage (central)
+///     /home/acao-social/evento/:id/cadastro      → CadastroMunicipePage
+///     /home/acao-social/evento/:id/ficha/:eleitorId → FichaAtendimentoPage
 ///     /home/agenda       → AgendaPage
 ///     /home/agenda/new   → EventFormPage
 ///     /home/agenda/:id   → EventDetailPage
@@ -208,6 +216,31 @@ final GoRouter appRouter = GoRouter(
             final id = state.pathParameters['id']!;
             return DemandDetailPage(id: id);
           },
+        ),
+
+        // ── Ação Social (expresso-saude no backend) ────────────────────────
+        // Sub-páginas (fora do dock): cada uma tem o próprio AppBar.
+        GoRoute(
+          path: '/home/acao-social',
+          builder: (_, __) => const AcaoSocialEventosPage(),
+        ),
+        GoRoute(
+          path: '/home/acao-social/evento/:id',
+          builder: (_, state) =>
+              AcaoSocialEventoPage(eventoId: state.pathParameters['id']!),
+        ),
+        GoRoute(
+          path: '/home/acao-social/evento/:id/cadastro',
+          builder: (_, state) =>
+              CadastroMunicipePage(eventoId: state.pathParameters['id']!),
+        ),
+        GoRoute(
+          path: '/home/acao-social/evento/:id/ficha/:eleitorId',
+          builder: (_, state) => FichaAtendimentoPage(
+            eventoId: state.pathParameters['id']!,
+            eleitorId:
+                int.tryParse(state.pathParameters['eleitorId'] ?? '') ?? 0,
+          ),
         ),
 
         // ── Agenda ─────────────────────────────────────────────────────────

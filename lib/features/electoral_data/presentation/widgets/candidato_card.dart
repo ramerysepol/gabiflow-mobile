@@ -99,6 +99,8 @@ class _AvatarCandidato extends StatelessWidget {
             imageUrl: fotoUrl!,
             width: 48,
             height: 48,
+            memCacheWidth:
+                (48 * MediaQuery.devicePixelRatioOf(context)).round(),
             fit: BoxFit.cover,
             errorWidget: (_, __, ___) => Text(
               inicial,

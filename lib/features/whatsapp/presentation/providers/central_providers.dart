@@ -84,7 +84,7 @@ class ConversasNotifier extends StateNotifier<ConversasState> {
     );
   }
 
-  Future<void> carregar({bool silencioso = false}) async {
+  Future<void> carregar({bool silencioso = false, bool retentativa = false}) async {
     if (!silencioso) state = state.copyWith(carregando: true, limparErro: true);
     try {
       final r = await _ds.listarConversas(
@@ -103,6 +103,13 @@ class ConversasNotifier extends StateNotifier<ConversasState> {
       );
     } catch (e) {
       if (!mounted) return;
+      // Socket morto ao voltar do background / oscilacao: UMA nova tentativa
+      // imediata resolve a maioria dos casos sem mostrar erro ao usuario.
+      if (!retentativa && ehFalhaTransiente(e)) {
+        await Future<void>.delayed(const Duration(seconds: 1));
+        if (!mounted) return;
+        return carregar(silencioso: silencioso, retentativa: true);
+      }
       // Em polling silencioso mantem a lista atual; so registra o erro.
       state = state.copyWith(carregando: false, erro: mensagemAmigavel(e));
     }
@@ -144,6 +151,14 @@ class ConversasNotifier extends StateNotifier<ConversasState> {
     );
   }
 
+  /// App voltou do background: SSE antigo esta morto e o proximo poll pode
+  /// demorar ate 15s. Reconecta e recarrega na hora.
+  void aoRetomar() {
+    if (!mounted) return;
+    _sse?.reconectarAgora();
+    carregar(silencioso: true);
+  }
+
   @override
   void dispose() {
     _pollTimer?.cancel();
@@ -154,7 +169,9 @@ class ConversasNotifier extends StateNotifier<ConversasState> {
 
 final conversasProvider =
     StateNotifierProvider.autoDispose<ConversasNotifier, ConversasState>((ref) {
-      return ConversasNotifier(ref.watch(centralDataSourceProvider));
+      final notifier = ConversasNotifier(ref.watch(centralDataSourceProvider));
+      ref.listen<int>(appRetomadoProvider, (_, __) => notifier.aoRetomar());
+      return notifier;
     });
 
 // ── Chat de uma conversa ───────────────────────────────────────────────────
@@ -451,6 +468,13 @@ class ChatNotifier extends StateNotifier<ChatState> {
     }
   }
 
+  /// App voltou do background: reconecta o SSE e recarrega as mensagens.
+  void aoRetomar() {
+    if (!mounted) return;
+    _sse?.reconectarAgora();
+    carregar(silencioso: true);
+  }
+
   @override
   void dispose() {
     _pollTimer?.cancel();
@@ -462,7 +486,10 @@ class ChatNotifier extends StateNotifier<ChatState> {
 
 final chatProvider = StateNotifierProvider.autoDispose
     .family<ChatNotifier, ChatState, int>((ref, conversationId) {
-      return ChatNotifier(ref.watch(centralDataSourceProvider), conversationId);
+      final notifier =
+          ChatNotifier(ref.watch(centralDataSourceProvider), conversationId);
+      ref.listen<int>(appRetomadoProvider, (_, __) => notifier.aoRetomar());
+      return notifier;
     });
 
 /// Respostas rapidas do tenant (carrega uma vez por sessao de tela).

@@ -168,7 +168,7 @@ class _CandidatoPickerSheetState extends ConsumerState<_CandidatoPickerSheet> {
                                 backgroundColor:
                                     cs.primaryContainer.withValues(alpha: 0.6),
                                 backgroundImage: c.fotoUrl != null
-                                    ? CachedNetworkImageProvider(c.fotoUrl!)
+                                    ? CachedNetworkImageProvider(c.fotoUrl!, maxWidth: 160)
                                     : null,
                                 child: c.fotoUrl == null
                                     ? Text(

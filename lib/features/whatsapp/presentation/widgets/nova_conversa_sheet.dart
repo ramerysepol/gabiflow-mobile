@@ -69,7 +69,10 @@ class _NovaConversaSheetState extends ConsumerState<NovaConversaSheet> {
   @override
   Widget build(BuildContext context) {
     final bottomInset = MediaQuery.viewInsetsOf(context).bottom;
-    return Padding(
+    // SingleChildScrollView: com o teclado aberto o conteudo (3 campos +
+    // botao) nao cabe em "tela - teclado" e o Column estourava ("BOTTOM
+    // OVERFLOWED BY 78 PIXELS"). Rolando, o campo em foco segue visivel.
+    return SingleChildScrollView(
       padding: EdgeInsets.only(bottom: bottomInset, left: 16, right: 16),
       child: Column(
         mainAxisSize: MainAxisSize.min,

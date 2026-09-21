@@ -573,6 +573,8 @@ class _WhatsAppSendSheetState extends ConsumerState<WhatsAppSendSheet> {
                     width: 72,
                     height: 72,
                     fit: BoxFit.cover,
+                    cacheWidth:
+                        (72 * MediaQuery.devicePixelRatioOf(context)).round(),
                     errorBuilder: (_, __, ___) => Container(
                       width: 72,
                       height: 72,

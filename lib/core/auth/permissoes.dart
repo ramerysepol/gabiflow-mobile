@@ -49,6 +49,12 @@ abstract final class Permissoes {
   // Inteligencia artificial
   static const iaVer = 'ia:view';
 
+  // Acao Social (no backend o modulo chama-se expresso_saude)
+  static const acaoSocialVer = 'expresso_saude:view';
+  static const acaoSocialCriar = 'expresso_saude:create';
+  static const acaoSocialEditar = 'expresso_saude:edit';
+  static const acaoSocialAtender = 'expresso_saude:atender';
+
   // Painel
   static const dashboard = 'dashboard:access';
 }

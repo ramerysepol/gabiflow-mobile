@@ -3,6 +3,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../../core/network/auth_interceptor.dart';
 import '../../../../core/services/biometric_service.dart';
 import '../../../../core/services/logger_service.dart';
 import '../../../../core/services/storage_service.dart';
@@ -37,6 +38,18 @@ class _LoginPageState extends ConsumerState<LoginPage> {
     super.initState();
     _checkBiometric();
     ref.read(authRefreshProvider);
+    // Chegou aqui porque a sessão anterior expirou (refresh negado).
+    if (SessaoExpiradaAviso.consumir()) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Sua sessão expirou. Entre novamente.'),
+            duration: Duration(seconds: 5),
+          ),
+        );
+      });
+    }
   }
 
   @override

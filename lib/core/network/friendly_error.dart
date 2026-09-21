@@ -44,3 +44,22 @@ String mensagemAmigavel(Object erro) {
   }
   return 'Algo deu errado. Tente novamente.';
 }
+
+/// Falha de transporte (rede/socket/timeout) que vale UMA nova tentativa
+/// imediata — típico ao voltar do background com o socket keep-alive morto.
+bool ehFalhaTransiente(Object erro) {
+  if (erro is! DioException) return false;
+  switch (erro.type) {
+    case DioExceptionType.connectionTimeout:
+    case DioExceptionType.sendTimeout:
+    case DioExceptionType.receiveTimeout:
+    case DioExceptionType.connectionError:
+    case DioExceptionType.unknown:
+      return true;
+    case DioExceptionType.transformTimeout:
+    case DioExceptionType.badCertificate:
+    case DioExceptionType.cancel:
+    case DioExceptionType.badResponse:
+      return false;
+  }
+}

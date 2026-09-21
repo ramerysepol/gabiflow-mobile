@@ -109,6 +109,12 @@ class AuthNotifier extends StateNotifier<AuthState> {
     }
   }
   
+  /// Sessão encerrada pelo servidor (refresh token expirado/revogado). Os
+  /// tokens já foram apagados pelo AuthInterceptor; aqui só o estado global.
+  void marcarSessaoExpirada() {
+    state = const AuthState();
+  }
+
   /// Limpa dados de autenticação (preserva tenant)
   Future<void> _clearAuthData() async {
     await StorageService.clearAuthDataOnly();

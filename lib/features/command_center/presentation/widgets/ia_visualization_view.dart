@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
 import '../../data/models/ia_chat_models.dart';
+import 'ia_bairros_table.dart';
 
 final _numFmt = NumberFormat.decimalPattern('pt_BR');
 
@@ -53,6 +54,8 @@ class IaVisualizationView extends StatelessWidget {
       case 'comparison_card':
       case 'metric_cards':
         return _GenericKeyValueCard(data: viz.data);
+      case 'bairros_table':
+        return IaBairrosTable(data: viz.data);
       default:
         return const SizedBox.shrink();
     }

@@ -229,6 +229,8 @@ class _EleitoTile extends StatelessWidget {
                       imageUrl: eleito.fotoUrl!,
                       width: 44,
                       height: 44,
+                      memCacheWidth:
+                          (44 * MediaQuery.devicePixelRatioOf(context)).round(),
                       fit: BoxFit.cover,
                       errorWidget: (_, __, ___) => _Inicial(
                         nome: eleito.nomeUrna,

@@ -114,6 +114,8 @@ class _AcessoRapidoGrid extends ConsumerWidget {
     final temDemandas =
         ref.watch(temPermissaoProvider(Permissoes.demandasCriar));
     final temAgenda = ref.watch(temPermissaoProvider(Permissoes.agendaVer));
+    final temAcaoSocial =
+        ref.watch(temPermissaoProvider(Permissoes.acaoSocialVer));
 
     final cards = <Widget>[
       if (temCentral)
@@ -155,6 +157,14 @@ class _AcessoRapidoGrid extends ConsumerWidget {
           icone: Icons.calendar_month_rounded,
           cores: const [Color(0xFF00897B), Color(0xFF26A69A)],
           onTap: () => context.go('/home/agenda'),
+        ),
+      if (temAcaoSocial)
+        GradientActionCard(
+          titulo: 'Ação Social',
+          subtitulo: 'Mutirões, vagas e atendimentos',
+          icone: Icons.volunteer_activism_rounded,
+          cores: const [Color(0xFFC2185B), Color(0xFFEC407A)],
+          onTap: () => context.push('/home/acao-social'),
         ),
     ];
 

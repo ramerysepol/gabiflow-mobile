@@ -525,7 +525,8 @@ class _Avatar extends StatelessWidget {
     return CircleAvatar(
       radius: 24,
       backgroundColor: cs.primaryContainer,
-      foregroundImage: NetworkImage(url),
+      foregroundImage: ResizeImage(NetworkImage(url),
+          width: (48 * MediaQuery.devicePixelRatioOf(context)).round()),
       onForegroundImageError: (_, __) {},
       child: fallback.child,
     );

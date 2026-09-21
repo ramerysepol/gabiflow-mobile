@@ -134,6 +134,98 @@ class IaRemoteDatasource {
     }
   }
 
+  /// Exporta uma conversa do Command Center em PDF (bytes), como na tela.
+  /// Endpoint exclusivo mobile: POST /api/mobile/eleitoral/ia/exportar-pdf.
+  Future<List<int>> exportarConversaPdf({
+    required Map<String, dynamic> contexto,
+    required List<Map<String, dynamic>> mensagens,
+  }) async {
+    final res = await _client.post<List<int>>(
+      '/api/mobile/eleitoral/ia/exportar-pdf',
+      data: {'contexto': contexto, 'mensagens': mensagens},
+      options: Options(
+        responseType: ResponseType.bytes,
+        headers: {'Accept': 'application/pdf'},
+        receiveTimeout: const Duration(seconds: 60),
+      ),
+    );
+    return _bytesOuErro(res);
+  }
+
+  List<int> _bytesOuErro(Response<List<int>> res) {
+    final bytes = res.data;
+    // 401/403/404 chegam como JSON em bytes (validateStatus < 500)
+    if (res.statusCode != 200 || bytes == null || bytes.isEmpty) {
+      String motivo = 'Falha ao gerar o PDF (HTTP ${res.statusCode})';
+      if (bytes != null && bytes.isNotEmpty) {
+        try {
+          final json = jsonDecode(utf8.decode(bytes));
+          if (json is Map && json['error'] is String) {
+            motivo = json['error'] as String;
+          }
+        } catch (_) {
+          // corpo não é JSON: mantém a mensagem genérica
+        }
+      }
+      throw Exception(motivo);
+    }
+    return bytes;
+  }
+
+  /// Baixa o relatório por bairro em PDF (bytes).
+  /// Endpoint exclusivo mobile: /api/mobile/eleitoral/bairros/relatorio-pdf.
+  /// [tipo]: votos | fracos | evolucao | gabinete.
+  Future<List<int>> baixarRelatorioBairrosPdf({
+    required String tipo,
+    required String sequencial,
+    required String ano,
+    required String uf,
+    String? municipio,
+    String? cargoAlvo,
+    String? anoAlvo,
+    String? bairro,
+    String? cargo,
+  }) async {
+    final res = await _client.get<List<int>>(
+      '/api/mobile/eleitoral/bairros/relatorio-pdf',
+      queryParameters: {
+        'tipo': tipo,
+        'sequencial': sequencial,
+        'ano': ano,
+        'uf': uf,
+        if (municipio != null && municipio.trim().isNotEmpty)
+          'municipio': municipio.trim(),
+        if (cargoAlvo != null && cargoAlvo.isNotEmpty) 'cargo_alvo': cargoAlvo,
+        if (anoAlvo != null && anoAlvo.isNotEmpty) 'ano_alvo': anoAlvo,
+        if (bairro != null && bairro.trim().isNotEmpty) 'bairro': bairro.trim(),
+        if (cargo != null && cargo.isNotEmpty) 'cargo': cargo,
+      },
+      options: Options(
+        responseType: ResponseType.bytes,
+        headers: {'Accept': 'application/pdf'},
+        // O servidor renderiza o PDF com Chromium: pode levar alguns segundos.
+        receiveTimeout: const Duration(seconds: 90),
+      ),
+    );
+    final bytes = res.data;
+    // 401/403/404 chegam como JSON em bytes (validateStatus < 500)
+    if (res.statusCode != 200 || bytes == null || bytes.isEmpty) {
+      String motivo = 'Falha ao gerar o PDF (HTTP ${res.statusCode})';
+      if (bytes != null && bytes.isNotEmpty) {
+        try {
+          final json = jsonDecode(utf8.decode(bytes));
+          if (json is Map && json['error'] is String) {
+            motivo = json['error'] as String;
+          }
+        } catch (_) {
+          // corpo não é JSON: mantém a mensagem genérica
+        }
+      }
+      throw Exception(motivo);
+    }
+    return bytes;
+  }
+
   dynamic _extractData(Map<String, dynamic>? json) {
     if (json == null) throw Exception('Resposta vazia do servidor');
     if (json['success'] == false) {

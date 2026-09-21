@@ -50,7 +50,11 @@ class UserAvatar extends StatelessWidget {
         return CircleAvatar(
           radius: radius,
           backgroundColor: bgColor,
-          backgroundImage: MemoryImage(imageBytes),
+          backgroundImage: ResizeImage(
+            MemoryImage(imageBytes),
+            width:
+                (radius * 2 * MediaQuery.devicePixelRatioOf(context)).round(),
+          ),
           onBackgroundImageError: (_, __) {
             // Se falhar ao carregar, volta para as iniciais
           },
@@ -78,7 +82,10 @@ class UserAvatar extends StatelessWidget {
       return CircleAvatar(
         radius: radius,
         backgroundColor: bgColor,
-        backgroundImage: NetworkImage(avatarData!),
+        backgroundImage: ResizeImage(
+          NetworkImage(avatarData!),
+          width: (radius * 2 * MediaQuery.devicePixelRatioOf(context)).round(),
+        ),
         onBackgroundImageError: (_, __) {
           // Se falhar ao carregar, volta para as iniciais
         },
