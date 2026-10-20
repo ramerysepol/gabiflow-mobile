@@ -49,3 +49,5 @@ app.*.map.json
 
 # Artefatos de release (AAB/símbolos/mapping) — não versionar
 release_artifacts/
+google-services.json
+GoogleService-Info.plist

@@ -24,8 +24,9 @@ class HomePage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     // Aba "Atendimento" só existe para quem tem a permissão da central.
-    final temCentral =
-        ref.watch(temPermissaoProvider(Permissoes.whatsappCentral));
+    final temCentral = ref.watch(
+      temPermissaoProvider(Permissoes.whatsappCentral),
+    );
 
     final routes = [
       '/home',
@@ -59,59 +60,67 @@ class HomePage extends ConsumerWidget {
     // so o "X" da Visao Geral devolve ao GabiFlow.
     if (location.startsWith('/home/eleitoral')) return child;
 
-    final rootIndex = routes.indexOf(location);
+    // Apuração ao vivo: sub-página da aba Início — mantém o dock com
+    // "Início" selecionado (não ganha um ícone novo no dock), mas exibe
+    // título e identidade visual próprios no header, como os demais módulos.
+    final isApuracaoPrincipal = location == '/home/apuracao';
+
+    final rootIndex = routes.indexOf(isApuracaoPrincipal ? '/home' : location);
 
     // Sub-página (detalhe/formulário): tela cheia, sem header nem dock.
     if (rootIndex < 0) return child;
 
-    final isHome = rootIndex == 0;
+    final isHome = rootIndex == 0 && !isApuracaoPrincipal;
 
     // Identidade visual por aba (cor + marca-d'água) — DNA da Central
     final cs0 = Theme.of(context).colorScheme;
-    final (accent, iconeAba) = switch (titles[rootIndex]) {
-      'Munícipes' => (const Color(0xFF1976D2), Icons.people_rounded),
-      'Demandas' => (const Color(0xFFEF6C00), Icons.inbox_rounded),
-      'Agenda' => (const Color(0xFF00897B), Icons.calendar_month_rounded),
-      _ => (cs0.primary, null),
-    };
+    final (accent, iconeAba) = isApuracaoPrincipal
+        ? (const Color(0xFFB71C1C), Icons.how_to_vote_rounded)
+        : switch (titles[rootIndex]) {
+            'Munícipes' => (const Color(0xFF1976D2), Icons.people_rounded),
+            'Demandas' => (const Color(0xFFEF6C00), Icons.inbox_rounded),
+            'Agenda' => (const Color(0xFF00897B), Icons.calendar_month_rounded),
+            _ => (cs0.primary, null),
+          };
     final user = ref.watch(authProvider).user;
     final cs = Theme.of(context).colorScheme;
     // Base escura "war room" (padrao da Central Eleitoral) em todo o app;
     // o accent de cada aba entra como brilho/gradiente por cima.
     final isDarkTema = Theme.of(context).brightness == Brightness.dark;
-    final ink =
-        isDarkTema ? const Color(0xFF10151F) : const Color(0xFF16213E);
+    final ink = isDarkTema ? const Color(0xFF10151F) : const Color(0xFF16213E);
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: SystemUiOverlayStyle.light,
       child: Scaffold(
         backgroundColor: ink,
         body: Column(
-                children: [
-                  _InkHeader(
-                    ink: ink,
-                    isHome: isHome,
-                    title: titles[rootIndex],
-                    accent: accent,
-                    icone: iconeAba,
-                    userName: user?.name,
-                    avatarData: user?.avatar,
-                    onLogout: () => _confirmLogout(context, ref),
-                  ),
-                  // Folha de conteúdo sobre a tinta
-                  Expanded(
-                    child: ClipRRect(
-                      borderRadius: const BorderRadius.vertical(
-                        top: Radius.circular(AppRadius.sheet),
-                      ),
-                      child: Container(
-                        color: Theme.of(context).scaffoldBackgroundColor,
-                        child: child,
-                      ),
-                    ),
-                  ),
-                ],
+          children: [
+            _InkHeader(
+              ink: ink,
+              isHome: isHome,
+              title: isApuracaoPrincipal
+                  ? 'Apuração ao vivo'
+                  : titles[rootIndex],
+              accent: accent,
+              icone: iconeAba,
+              userName: user?.name,
+              avatarData: user?.avatar,
+              onLogout: () => _confirmLogout(context, ref),
+            ),
+            // Folha de conteúdo sobre a tinta
+            Expanded(
+              child: ClipRRect(
+                borderRadius: const BorderRadius.vertical(
+                  top: Radius.circular(AppRadius.sheet),
+                ),
+                child: Container(
+                  color: Theme.of(context).scaffoldBackgroundColor,
+                  child: child,
+                ),
               ),
+            ),
+          ],
+        ),
         bottomNavigationBar: AppBottomNav(
           items: navItems,
           selectedIndex: rootIndex,
@@ -255,9 +264,7 @@ class _InkHeader extends StatelessWidget {
                                 _greeting(userName),
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
-                                style: Theme.of(context)
-                                    .textTheme
-                                    .titleLarge
+                                style: Theme.of(context).textTheme.titleLarge
                                     ?.copyWith(color: Colors.white),
                               ),
                             ],
@@ -268,12 +275,14 @@ class _InkHeader extends StatelessWidget {
                                 Container(
                                   padding: const EdgeInsets.all(6),
                                   decoration: BoxDecoration(
-                                    color:
-                                        Colors.white.withValues(alpha: 0.14),
+                                    color: Colors.white.withValues(alpha: 0.14),
                                     borderRadius: BorderRadius.circular(9),
                                   ),
-                                  child: Icon(icone,
-                                      size: 16, color: Colors.white),
+                                  child: Icon(
+                                    icone,
+                                    size: 16,
+                                    color: Colors.white,
+                                  ),
                                 ),
                                 const SizedBox(width: 8),
                               ],
@@ -282,9 +291,7 @@ class _InkHeader extends StatelessWidget {
                                   title,
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
-                                  style: Theme.of(context)
-                                      .textTheme
-                                      .titleLarge
+                                  style: Theme.of(context).textTheme.titleLarge
                                       ?.copyWith(
                                         fontSize: 20,
                                         fontWeight: FontWeight.w800,
@@ -301,9 +308,7 @@ class _InkHeader extends StatelessWidget {
                     tooltip: 'Notificações',
                     onPressed: () {
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Em breve: Notificações'),
-                        ),
+                        const SnackBar(content: Text('Em breve: Notificações')),
                       );
                     },
                   ),
@@ -321,8 +326,8 @@ class _InkHeader extends StatelessWidget {
     final period = hour < 12
         ? 'Bom dia'
         : hour < 18
-            ? 'Boa tarde'
-            : 'Boa noite';
+        ? 'Boa tarde'
+        : 'Boa noite';
     final firstName = name?.split(' ').first ?? 'Usuário';
     return '$period, $firstName';
   }
@@ -338,8 +343,18 @@ class _InkHeader extends StatelessWidget {
       'sábado',
     ];
     const months = [
-      'jan', 'fev', 'mar', 'abr', 'mai', 'jun',
-      'jul', 'ago', 'set', 'out', 'nov', 'dez',
+      'jan',
+      'fev',
+      'mar',
+      'abr',
+      'mai',
+      'jun',
+      'jul',
+      'ago',
+      'set',
+      'out',
+      'nov',
+      'dez',
     ];
     final now = DateTime.now();
     return '${weekdays[now.weekday % 7]}, ${now.day} de ${months[now.month - 1]}';
@@ -382,9 +397,11 @@ class _AvatarMenu extends StatelessWidget {
           value: 'profile',
           child: Row(
             children: [
-              Icon(Icons.person_outline,
-                  size: 20,
-                  color: Theme.of(context).colorScheme.onSurfaceVariant),
+              Icon(
+                Icons.person_outline,
+                size: 20,
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
               const SizedBox(width: 12),
               const Text('Meu Perfil'),
             ],
@@ -395,13 +412,15 @@ class _AvatarMenu extends StatelessWidget {
           value: 'logout',
           child: Row(
             children: [
-              Icon(Icons.logout,
-                  size: 20, color: Theme.of(context).colorScheme.error),
+              Icon(
+                Icons.logout,
+                size: 20,
+                color: Theme.of(context).colorScheme.error,
+              ),
               const SizedBox(width: 12),
               Text(
                 'Sair',
-                style:
-                    TextStyle(color: Theme.of(context).colorScheme.error),
+                style: TextStyle(color: Theme.of(context).colorScheme.error),
               ),
             ],
           ),

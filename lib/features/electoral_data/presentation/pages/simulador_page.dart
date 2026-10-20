@@ -5,7 +5,6 @@ import 'package:intl/intl.dart';
 import '../../../../core/widgets/app_empty_state.dart';
 import '../../../../core/widgets/shimmer_skeleton.dart';
 import '../../data/models/municipio_voto_model.dart';
-import '../../data/services/mesorregiao_colors.dart';
 import '../providers/eleitoral_providers.dart';
 
 final _numFmt = NumberFormat.decimalPattern('pt_BR');
@@ -85,11 +84,12 @@ class _SimuladorPageState extends ConsumerState<SimuladorPage> {
   Widget _buildSimulador(MapaMunicipiosData mapa) {
     final cs = Theme.of(context).colorScheme;
     final tt = Theme.of(context).textTheme;
+    final ufCfg = ref.watch(ufConfigProvider);
 
-    // Agrupa votos originais por mesorregião (lookup hardcoded 417 municípios)
+    // Agrupa votos originais por mesorregião (lookup da UF ativa)
     final votosPorMeso = <String, int>{};
     for (final m in mapa.municipios) {
-      final key = MesorregiaoColors.getMesorregiaoKey(m.idMunicipio);
+      final key = ufCfg.getMesorregiaoKey(m.idMunicipio);
       votosPorMeso[key] = (votosPorMeso[key] ?? 0) + m.votosMunicipio;
     }
 
@@ -230,7 +230,7 @@ class _SimuladorPageState extends ConsumerState<SimuladorPage> {
                 Expanded(
                   child: Text(
                     'Maior crescimento: '
-                    '${MesorregiaoColors.nomes[maiorCrescimentoKey] ?? maiorCrescimentoKey} '
+                    '${ufCfg.nomes[maiorCrescimentoKey] ?? maiorCrescimentoKey} '
                     '(+${_numFmt.format(maiorCrescimento.round())} votos)',
                     style: tt.labelSmall?.copyWith(
                       fontWeight: FontWeight.w600,
@@ -258,8 +258,8 @@ class _SimuladorPageState extends ConsumerState<SimuladorPage> {
         // ── Sliders ───────────────────────────────────────────────────────
         for (final key in mesoKeys)
           _MesoSliderCard(
-            nome: MesorregiaoColors.nomes[key] ?? key,
-            cor: MesorregiaoColors.cores[key] ?? cs.primary,
+            nome: ufCfg.nomes[key] ?? key,
+            cor: ufCfg.cores[key] ?? cs.primary,
             votosOriginais: votosPorMeso[key] ?? 0,
             ajuste: _ajustes[key] ?? 0,
             onChanged: (v) => setState(() => _ajustes[key] = v),

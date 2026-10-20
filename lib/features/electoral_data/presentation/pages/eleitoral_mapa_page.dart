@@ -11,7 +11,7 @@ import 'candidato_mapa_page.dart';
 import '../../../../core/network/friendly_error.dart';
 
 /// Aba MAPA do sub-app Eleitoral — o mapa de calor como destino de primeira
-/// classe: escolhe o candidato e vê a mancha de votos na Bahia, já no modo
+/// classe: escolhe o candidato e vê a mancha de votos na UF, já no modo
 /// calor, com legenda dinâmica, drill-down por zonas e microrregiões.
 class EleitoralMapaPage extends ConsumerStatefulWidget {
   const EleitoralMapaPage({super.key});
@@ -89,7 +89,7 @@ class _EleitoralMapaPageState extends ConsumerState<EleitoralMapaPage> {
           : _candidato == null
               ? _Convite(
                   titulo:
-                      'Escolha um candidato para acender o mapa de votos da Bahia',
+                      'Escolha um candidato para acender o mapa de votos de ${ref.watch(ufConfigProvider).nome}',
                   botao: 'Escolher candidato',
                   onTap: _escolherCandidato,
                 )

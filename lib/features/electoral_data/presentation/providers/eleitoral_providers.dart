@@ -6,6 +6,7 @@ import 'package:hive_flutter/hive_flutter.dart';
 import '../../../../core/network/api_client.dart';
 import '../../data/datasources/eleitoral_remote_datasource.dart';
 import '../../data/datasources/ibge_remote_datasource.dart';
+import '../../data/ufs_config.dart';
 import '../../data/models/candidato_model.dart';
 import '../../data/models/candidato_stats_model.dart';
 import '../../data/models/coligacao_detalhe_model.dart';
@@ -90,7 +91,7 @@ class FiltrosSelecionados {
   final String search;
 
   const FiltrosSelecionados({
-    this.ano = 2022,
+    this.ano = 2026,
     this.estado = 'BA',
     this.cargo = '',
     this.search = '',
@@ -271,8 +272,19 @@ final candidatoMapaProvider =
 
 // ─── GeoFeatures (cache singleton) ───────────────────────────────────────────
 
+/// UF ativa (eleição selecionada → filtros). Fallback BA.
+final ufSelecionadaProvider = Provider<String>(
+  (ref) => ref.watch(filtrosSelecionadosProvider.select((f) => f.estado)),
+);
+
+/// Config da UF ativa (malha, centro do mapa, mesorregiões).
+final ufConfigProvider = Provider<UFConfig>(
+  (ref) => getUFConfig(ref.watch(ufSelecionadaProvider)),
+);
+
 final geoFeaturesProvider = FutureProvider((ref) async {
-  return GeoService.instance.getFeatures();
+  final cfg = ref.watch(ufConfigProvider);
+  return GeoService.instance.getFeatures(assetPath: cfg.assetPath);
 });
 
 // ─── Microrregião selecionada no mapa ────────────────────────────────────────
@@ -379,12 +391,12 @@ final eleitosDoMunicipioProvider =
 
 final ibgeMunicipioProvider =
     FutureProvider.family<IbgeMunicipioModel, String>((ref, id) async {
-  return ref.watch(ibgeDatasourceProvider).getMunicipio(id: id);
+  return ref.watch(ibgeDatasourceProvider).getMunicipio(id: id, uf: ref.watch(ufSelecionadaProvider));
 });
 
 final ibgeMicrorregioesProvider =
     FutureProvider<List<IbgeMicrorregiao>>((ref) async {
-  return ref.watch(ibgeDatasourceProvider).getMicrorregioes();
+  return ref.watch(ibgeDatasourceProvider).getMicrorregioes(uf: ref.watch(ufSelecionadaProvider));
 });
 
 // ─── Candidato B para comparação (buscado por texto) ─────────────────────────

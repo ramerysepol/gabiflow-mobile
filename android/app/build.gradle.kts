@@ -47,6 +47,13 @@ android {
     }
 
     buildTypes {
+        debug {
+            // Debug assinado com a mesma chave de upload (quando presente) para poder
+            // instalar por cima do release em aparelhos de teste e ler o logcat.
+            if (keystoreProperties.isNotEmpty()) {
+                signingConfig = signingConfigs.getByName("release")
+            }
+        }
         release {
             // Com key.properties presente assina com a chave de upload;
             // sem ele (ex.: outra maquina) cai na de debug pra nao quebrar o build.

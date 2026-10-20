@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../providers/eleitoral_providers.dart';
+import '../../../../core/utils/texto.dart';
 
 /// Bottom sheet de busca de município para o mapa.
 /// Ao selecionar, chama [onSelected] com a microrregião que contém o município
@@ -35,7 +36,7 @@ class _SeletorMunicipioSheetState
   void _onSearch(String value) {
     _debounce?.cancel();
     _debounce = Timer(const Duration(milliseconds: 300), () {
-      if (mounted) setState(() => _search = value.toLowerCase());
+      if (mounted) setState(() => _search = semAcento(value));
     });
   }
 
@@ -132,8 +133,8 @@ class _SeletorMunicipioSheetState
                         ? allMunicipios
                         : allMunicipios
                             .where((m) =>
-                                m.nome.toLowerCase().contains(_search) ||
-                                m.microrregiao.toLowerCase().contains(_search))
+                                semAcento(m.nome).contains(_search) ||
+                                semAcento(m.microrregiao).contains(_search))
                             .toList();
 
                     if (filtered.isEmpty) {

@@ -11,6 +11,7 @@ import 'package:upgrader/upgrader.dart';
 import 'core/network/auth_interceptor.dart';
 import 'core/providers/core_providers.dart';
 import 'core/router/app_router.dart';
+import 'core/services/push_service.dart';
 import 'core/services/storage_service.dart';
 import 'core/theme/app_theme.dart';
 import 'core/theme/tenant_theme_provider.dart';
@@ -22,6 +23,8 @@ import 'features/demands/presentation/providers/demand_provider.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  // App sempre em retrato (nao gira a tela).
+  await SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
 
   // Exibicao de ponta a ponta (edge-to-edge) em todas as versoes do Android,
   // como o Android 15+ ja faz por padrao com targetSdk 35+. Barras do sistema
@@ -44,6 +47,11 @@ Future<void> main() async {
   // Variáveis de ambiente
   try {
     await dotenv.load(fileName: '.env');
+  } catch (_) {}
+
+  // Push FCM (opções manuais do .env; sem chaves = desligado, sem erro)
+  try {
+    await PushService.inicializar();
   } catch (_) {}
 
   // Cache local
@@ -160,6 +168,9 @@ class _GabiFlowAppState extends ConsumerState<GabiFlowApp>
   @override
   Widget build(BuildContext context) {
     ref.listen<AuthState>(authProvider, (anterior, atual) {
+      if (!(anterior?.isAuthenticated ?? false) && atual.isAuthenticated) {
+        unawaited(PushService.registrar(ref.read(apiClientProvider)));
+      }
       if ((anterior?.isAuthenticated ?? false) && !atual.isAuthenticated) {
         _descartarDadosDaSessao();
       }

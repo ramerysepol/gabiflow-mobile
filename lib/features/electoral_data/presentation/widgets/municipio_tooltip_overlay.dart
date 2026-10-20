@@ -6,7 +6,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../data/models/ibge_municipio_model.dart';
 import '../../data/models/municipio_voto_model.dart';
-import '../../data/services/mesorregiao_colors.dart';
 import '../providers/eleitoral_providers.dart';
 import 'numero_formatado.dart';
 
@@ -202,8 +201,9 @@ class _TooltipWidgetState extends ConsumerState<_TooltipWidget>
     final maxTop = screen.height - safeBottom - cardHeight;
     top = top.clamp(minTop, math.max(minTop, maxTop));
 
-    final mesoColor = MesorregiaoColors.getCor(widget.municipio.idMunicipio);
-    final mesoNome = MesorregiaoColors.getNome(widget.municipio.idMunicipio);
+    final ufCfg = ref.watch(ufConfigProvider);
+    final mesoColor = ufCfg.getCor(widget.municipio.idMunicipio);
+    final mesoNome = ufCfg.getNome(widget.municipio.idMunicipio);
 
     // Usa dado pré-carregado ou assiste o provider
     final ibgeAsync = ref.watch(ibgeMunicipioProvider(widget.municipio.idMunicipio));

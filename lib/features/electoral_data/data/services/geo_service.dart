@@ -18,7 +18,8 @@ class MunicipioFeature {
   });
 }
 
-/// Carrega e converte o arquivo TopoJSON de municípios da Bahia em [MunicipioFeature]s.
+/// Carrega e converte um arquivo TopoJSON (municípios de uma UF ou estados do
+/// Brasil) em [MunicipioFeature]s, com cache por asset.
 ///
 /// Implementa o algoritmo TopoJSON → GeoJSON:
 /// 1. Lê o transform (scale + translate)
@@ -28,29 +29,23 @@ class GeoService {
   GeoService._();
   static final GeoService instance = GeoService._();
 
-  List<MunicipioFeature>? _features;
-  bool _loading = false;
+  static const assetBahia = 'assets/geo/bahia-municipios.topo.json';
 
-  Future<List<MunicipioFeature>> getFeatures() async {
-    if (_features != null) return _features!;
-    if (_loading) {
-      // Aguarda a primeira carga terminar
-      while (_loading) {
-        await Future<void>.delayed(const Duration(milliseconds: 50));
-      }
-      return _features ?? [];
-    }
-    _loading = true;
-    try {
-      _features = await _load();
-      return _features!;
-    } finally {
-      _loading = false;
-    }
+  final Map<String, Future<List<MunicipioFeature>>> _cache = {};
+
+  Future<List<MunicipioFeature>> getFeatures({String assetPath = assetBahia}) {
+    final cached = _cache[assetPath];
+    if (cached != null) return cached;
+    final future = _load(assetPath).onError((e, s) {
+      _cache.remove(assetPath);
+      throw e!;
+    });
+    _cache[assetPath] = future;
+    return future;
   }
 
-  Future<List<MunicipioFeature>> _load() async {
-    final raw = await rootBundle.loadString('assets/geo/bahia-municipios.topo.json');
+  Future<List<MunicipioFeature>> _load(String assetPath) async {
+    final raw = await rootBundle.loadString(assetPath);
     final Map<String, dynamic> topo = jsonDecode(raw) as Map<String, dynamic>;
 
     // --- Transform ---

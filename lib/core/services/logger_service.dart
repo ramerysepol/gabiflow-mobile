@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:logger/logger.dart';
 
 /// Serviço de logging customizado
@@ -11,7 +12,9 @@ class LoggerService {
       printEmojis: true,
       dateTimeFormat: DateTimeFormat.onlyTimeAndSinceStart,
     ),
-    level: Level.trace,
+    // Em release NADA é logado: o api_client registra corpos de requisição e
+    // resposta (dados de munícipes) — não podem aparecer no logcat da loja.
+    level: kReleaseMode ? Level.off : Level.trace,
   );
   
   /// Log de debug

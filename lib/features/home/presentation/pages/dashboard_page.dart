@@ -105,19 +105,33 @@ class _AcessoRapidoGrid extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final temCentral =
-        ref.watch(temPermissaoProvider(Permissoes.whatsappCentral));
-    final temEleitoral =
-        ref.watch(temPermissaoProvider(Permissoes.eleitoralVer));
-    final temMunicipes =
-        ref.watch(temPermissaoProvider(Permissoes.eleitoresListar));
-    final temDemandas =
-        ref.watch(temPermissaoProvider(Permissoes.demandasCriar));
+    final temCentral = ref.watch(
+      temPermissaoProvider(Permissoes.whatsappCentral),
+    );
+    final temEleitoral = ref.watch(
+      temPermissaoProvider(Permissoes.eleitoralVer),
+    );
+    final temMunicipes = ref.watch(
+      temPermissaoProvider(Permissoes.eleitoresListar),
+    );
+    final temDemandas = ref.watch(
+      temPermissaoProvider(Permissoes.demandasCriar),
+    );
     final temAgenda = ref.watch(temPermissaoProvider(Permissoes.agendaVer));
-    final temAcaoSocial =
-        ref.watch(temPermissaoProvider(Permissoes.acaoSocialVer));
+    final temAcaoSocial = ref.watch(
+      temPermissaoProvider(Permissoes.acaoSocialVer),
+    );
 
     final cards = <Widget>[
+      if (temEleitoral)
+        GradientActionCard(
+          titulo: 'Apuração ao vivo',
+          subtitulo: 'Resultados oficiais do TSE',
+          icone: Icons.how_to_vote_rounded,
+          cores: const [Color(0xFFB71C1C), Color(0xFFE53935)],
+          badge: 'AO VIVO',
+          onTap: () => context.go('/home/apuracao'),
+        ),
       if (temCentral)
         GradientActionCard(
           titulo: 'Atendimento',
@@ -322,8 +336,11 @@ class _StatCard extends StatelessWidget {
             detalhe,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: TextStyle(fontSize: 10.5, color: cor,
-                fontWeight: FontWeight.w700),
+            style: TextStyle(
+              fontSize: 10.5,
+              color: cor,
+              fontWeight: FontWeight.w700,
+            ),
           ),
         ],
       ),
@@ -373,8 +390,11 @@ class _AtendimentosCard extends StatelessWidget {
                       color: Colors.white.withValues(alpha: 0.15),
                       borderRadius: BorderRadius.circular(10),
                     ),
-                    child: const Icon(Icons.support_agent_rounded,
-                        color: Colors.white, size: 18),
+                    child: const Icon(
+                      Icons.support_agent_rounded,
+                      color: Colors.white,
+                      size: 18,
+                    ),
                   ),
                   const SizedBox(width: 10),
                   const Expanded(
@@ -387,8 +407,11 @@ class _AtendimentosCard extends StatelessWidget {
                       ),
                     ),
                   ),
-                  Icon(Icons.chevron_right_rounded,
-                      color: Colors.white.withValues(alpha: 0.7), size: 20),
+                  Icon(
+                    Icons.chevron_right_rounded,
+                    color: Colors.white.withValues(alpha: 0.7),
+                    size: 20,
+                  ),
                 ],
               ),
               const SizedBox(height: 12),
@@ -415,10 +438,10 @@ class _AtendimentosCard extends StatelessWidget {
   }
 
   Widget _divisor() => Container(
-        width: 1,
-        height: 28,
-        color: Colors.white.withValues(alpha: 0.15),
-      );
+    width: 1,
+    height: 28,
+    color: Colors.white.withValues(alpha: 0.15),
+  );
 }
 
 class _MiniStat extends StatelessWidget {
@@ -453,8 +476,9 @@ class _MiniStat extends StatelessWidget {
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: TextStyle(
-              color: (destaque ? cor : Colors.white)
-                  .withValues(alpha: destaque ? 0.95 : 0.7),
+              color: (destaque ? cor : Colors.white).withValues(
+                alpha: destaque ? 0.95 : 0.7,
+              ),
               fontSize: 10,
               fontWeight: FontWeight.w700,
             ),
@@ -542,11 +566,7 @@ class _ActivityList extends StatelessWidget {
                   color: cs.primary.withValues(alpha: 0.1),
                   shape: BoxShape.circle,
                 ),
-                child: Icon(
-                  _iconForType(a.type),
-                  size: 16,
-                  color: cs.primary,
-                ),
+                child: Icon(_iconForType(a.type), size: 16, color: cs.primary),
               ),
               title: Text(
                 a.displayTitle,
@@ -562,9 +582,7 @@ class _ActivityList extends StatelessWidget {
                 a.timeAgo,
                 style: Theme.of(context).textTheme.bodySmall,
               ),
-            ).animate().fadeIn(
-                  delay: Duration(milliseconds: 300 + i * 60),
-                );
+            ).animate().fadeIn(delay: Duration(milliseconds: 300 + i * 60));
           },
         ),
       ),
@@ -628,10 +646,7 @@ class _ErrorBanner extends StatelessWidget {
           ),
           const SizedBox(width: AppSpacing.sm),
           const Expanded(child: Text('Erro ao carregar estatísticas')),
-          TextButton(
-            onPressed: onRetry,
-            child: const Text('Tentar novamente'),
-          ),
+          TextButton(onPressed: onRetry, child: const Text('Tentar novamente')),
         ],
       ),
     );

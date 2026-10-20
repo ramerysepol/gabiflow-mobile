@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/providers/core_providers.dart';
+import '../../../../core/services/push_service.dart';
 import '../../../../core/services/storage_service.dart';
 import '../../data/datasources/auth_remote_datasource.dart';
 import '../../data/datasources/auth_validation_datasource.dart';
@@ -161,6 +162,10 @@ class AuthNotifier extends StateNotifier<AuthState> {
   
   /// Faz logout
   Future<void> logout() async {
+    // Remove o token de push enquanto a sessão ainda é válida
+    try {
+      await PushService.desregistrar();
+    } catch (_) {}
     try {
       await _authDataSource.logout();
     } catch (_) {

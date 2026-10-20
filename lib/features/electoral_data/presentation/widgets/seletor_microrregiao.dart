@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/models/ibge_municipio_model.dart';
 import '../providers/eleitoral_providers.dart';
 import 'erro_inline.dart';
+import '../../../../core/utils/texto.dart';
 
 /// Bottom sheet para seleção de microrregião — filtra o mapa.
 class SeletorMicrorregiao extends ConsumerStatefulWidget {
@@ -81,7 +82,7 @@ class _SeletorMicrorregiaoState extends ConsumerState<SeletorMicrorregiao> {
                     isDense: true,
                     border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                   ),
-                  onChanged: (v) => setState(() => _search = v.toLowerCase()),
+                  onChanged: (v) => setState(() => _search = semAcento(v)),
                 ),
               ),
               const SizedBox(height: 8),
@@ -95,7 +96,7 @@ class _SeletorMicrorregiaoState extends ConsumerState<SeletorMicrorregiao> {
                   data: (micros) {
                     final filtered = _search.isEmpty
                         ? micros
-                        : micros.where((m) => m.nome.toLowerCase().contains(_search)).toList();
+                        : micros.where((m) => semAcento(m.nome).contains(_search)).toList();
                     return ListView.separated(
                       controller: scrollCtrl,
                       itemCount: filtered.length,

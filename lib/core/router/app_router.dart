@@ -11,6 +11,9 @@ import '../../features/acao_social/presentation/pages/ficha_atendimento_page.dar
 import '../../features/agenda/presentation/pages/agenda_page.dart';
 import '../../features/agenda/presentation/pages/event_detail_page.dart';
 import '../../features/agenda/presentation/pages/event_form_page.dart';
+import '../../features/apuracao/presentation/pages/apuracao_page.dart';
+import '../../features/apuracao/presentation/pages/apuracao_tv_page.dart';
+import '../../features/apuracao/presentation/pages/candidato_apuracao_page.dart';
 import '../../features/auth/presentation/pages/login_page.dart';
 import '../../features/constituents/presentation/pages/constituent_detail_page.dart';
 import '../../features/constituents/presentation/pages/constituent_form_page.dart';
@@ -61,6 +64,9 @@ import '../../features/electoral_data/presentation/pages/simulador_page.dart';
 ///     /home/agenda       → AgendaPage
 ///     /home/agenda/new   → EventFormPage
 ///     /home/agenda/:id   → EventDetailPage
+///     /home/apuracao                     → ApuracaoPage (header + dock da Home)
+///     /home/apuracao/candidato/:sqcand    → CandidatoApuracaoPage
+///     /home/apuracao/tv?cargo=           → ApuracaoTvPage (Modo TV, tela cheia)
 ///     /home/eleitoral              → EleitoralHomePage (condicional)
 ///     /home/eleitoral/selecionar   → SeletorEleicaoPage
 ///     /home/eleitoral/candidato/:sequencial → CandidatoDetailPage
@@ -72,14 +78,8 @@ final GoRouter appRouter = GoRouter(
   initialLocation: '/',
   debugLogDiagnostics: false,
   routes: [
-    GoRoute(
-      path: '/',
-      builder: (_, __) => const SplashPage(),
-    ),
-    GoRoute(
-      path: '/tenant-setup',
-      builder: (_, __) => const TenantSetupPage(),
-    ),
+    GoRoute(path: '/', builder: (_, __) => const SplashPage()),
+    GoRoute(path: '/tenant-setup', builder: (_, __) => const TenantSetupPage()),
     GoRoute(
       path: '/login/:subdomain',
       builder: (_, state) {
@@ -96,7 +96,9 @@ final GoRouter appRouter = GoRouter(
         GoRoute(
           path: '/home',
           pageBuilder: (_, state) => NoTransitionPage(
-              key: state.pageKey, child: const DashboardPage()),
+            key: state.pageKey,
+            child: const DashboardPage(),
+          ),
         ),
 
         // ── Atendimento (Central WhatsApp) ─────────────────────────────────
@@ -135,13 +137,16 @@ final GoRouter appRouter = GoRouter(
               reverseTransitionDuration: const Duration(milliseconds: 180),
               transitionsBuilder: (_, animation, __, child) {
                 return SlideTransition(
-                  position: Tween<Offset>(
-                    begin: const Offset(1, 0),
-                    end: Offset.zero,
-                  ).animate(CurvedAnimation(
-                    parent: animation,
-                    curve: Curves.easeOutCubic,
-                  )),
+                  position:
+                      Tween<Offset>(
+                        begin: const Offset(1, 0),
+                        end: Offset.zero,
+                      ).animate(
+                        CurvedAnimation(
+                          parent: animation,
+                          curve: Curves.easeOutCubic,
+                        ),
+                      ),
                   child: child,
                 );
               },
@@ -158,16 +163,15 @@ final GoRouter appRouter = GoRouter(
         ),
 
         // ── Perfil do usuário ──────────────────────────────────────────────
-        GoRoute(
-          path: '/home/perfil',
-          builder: (_, __) => const ProfilePage(),
-        ),
+        GoRoute(path: '/home/perfil', builder: (_, __) => const ProfilePage()),
 
         // ── Munícipes ──────────────────────────────────────────────────────
         GoRoute(
           path: '/home/constituents',
           pageBuilder: (_, state) => NoTransitionPage(
-              key: state.pageKey, child: const ConstituentsListPage()),
+            key: state.pageKey,
+            child: const ConstituentsListPage(),
+          ),
         ),
         GoRoute(
           path: '/home/constituents/new',
@@ -200,7 +204,9 @@ final GoRouter appRouter = GoRouter(
         GoRoute(
           path: '/home/demands',
           pageBuilder: (_, state) => NoTransitionPage(
-              key: state.pageKey, child: const DemandsListPage()),
+            key: state.pageKey,
+            child: const DemandsListPage(),
+          ),
         ),
         GoRoute(
           path: '/home/demands/new',
@@ -264,6 +270,33 @@ final GoRouter appRouter = GoRouter(
           },
         ),
 
+        // ── Apuração ao vivo (resultados oficiais do TSE) ───────────────────
+        // Página principal fica dentro do shell normal da Home (header +
+        // dock, com "Início" selecionado — ver HomePage); o detalhe do
+        // candidato abre em tela cheia, como os demais detalhes do app.
+        GoRoute(
+          path: '/home/apuracao',
+          pageBuilder: (_, state) =>
+              NoTransitionPage(key: state.pageKey, child: const ApuracaoPage()),
+        ),
+        GoRoute(
+          path: '/home/apuracao/candidato/:sqcand',
+          builder: (_, state) {
+            final sqcand = state.pathParameters['sqcand']!;
+            return CandidatoApuracaoPage(sqcand: sqcand);
+          },
+        ),
+        // Modo TV ("sala de guerra"): tela cheia, sem dock — ver HomePage
+        // (rootIndex < 0 pra qualquer rota fora da lista de abas).
+        GoRoute(
+          path: '/home/apuracao/tv',
+          builder: (_, state) {
+            final cargo =
+                int.tryParse(state.uri.queryParameters['cargo'] ?? '') ?? 1;
+            return ApuracaoTvPage(cargo: cargo);
+          },
+        ),
+
         // ── Dados Eleitorais (sub-app com barra própria) ──────────────────
         // As 5 abas vivem dentro do EleitoralShell; o resto abre em tela
         // cheia por cima (detalhe, comparar, seletor...).
@@ -273,27 +306,37 @@ final GoRouter appRouter = GoRouter(
             GoRoute(
               path: '/home/eleitoral',
               pageBuilder: (_, state) => NoTransitionPage(
-                  key: state.pageKey, child: const EleitoralVisaoPage()),
+                key: state.pageKey,
+                child: const EleitoralVisaoPage(),
+              ),
             ),
             GoRoute(
               path: '/home/eleitoral/mapa',
               pageBuilder: (_, state) => NoTransitionPage(
-                  key: state.pageKey, child: const EleitoralMapaPage()),
+                key: state.pageKey,
+                child: const EleitoralMapaPage(),
+              ),
             ),
             GoRoute(
               path: '/home/eleitoral/candidatos',
               pageBuilder: (_, state) => NoTransitionPage(
-                  key: state.pageKey, child: const EleitoralHomePage()),
+                key: state.pageKey,
+                child: const EleitoralHomePage(),
+              ),
             ),
             GoRoute(
               path: '/home/eleitoral/rankings',
               pageBuilder: (_, state) => NoTransitionPage(
-                  key: state.pageKey, child: const RankingsPage()),
+                key: state.pageKey,
+                child: const RankingsPage(),
+              ),
             ),
             GoRoute(
               path: '/home/eleitoral/ia',
               pageBuilder: (_, state) => NoTransitionPage(
-                  key: state.pageKey, child: const CommandCenterPage()),
+                key: state.pageKey,
+                child: const CommandCenterPage(),
+              ),
             ),
           ],
         ),

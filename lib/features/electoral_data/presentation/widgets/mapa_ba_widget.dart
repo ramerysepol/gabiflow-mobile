@@ -6,7 +6,7 @@ import 'package:latlong2/latlong.dart';
 
 import '../../data/models/municipio_voto_model.dart';
 import '../../data/services/geo_service.dart';
-import '../../data/services/mesorregiao_colors.dart';
+import '../../data/ufs_config.dart';
 import '../providers/eleitoral_providers.dart';
 import 'municipio_bottom_sheet.dart';
 import 'municipio_tooltip_overlay.dart';
@@ -48,9 +48,10 @@ class MapaBaWidget extends ConsumerStatefulWidget {
 
 class _MapaBaWidgetState extends ConsumerState<MapaBaWidget>
     with SingleTickerProviderStateMixin {
-  // Centro aproximado da Bahia
-  static const _center = LatLng(-13.0, -41.5);
-  static const _defaultZoom = 5.5;
+  // Centro/zoom iniciais vêm da UF ativa (ufs_config.dart)
+  UFConfig get _cfg => ref.read(ufConfigProvider);
+  LatLng get _center => _cfg.center;
+  double get _defaultZoom => _cfg.zoom;
   // Zoom a partir do qual os labels dos top municípios aparecem
   static const _labelZoomThreshold = 6.5;
 
@@ -123,12 +124,12 @@ class _MapaBaWidgetState extends ConsumerState<MapaBaWidget>
           cor = heatBase.withValues(alpha: 0.05);
         }
       } else if (dado != null) {
-        final baseCor = MesorregiaoColors.getCor(feat.id);
+        final baseCor = _cfg.getCor(feat.id);
         final opacity =
             GeoService.calcOpacity(dado.votosMunicipio, widget.maxVotos);
         cor = baseCor.withValues(alpha: opacity);
       } else {
-        cor = MesorregiaoColors.getCor(feat.id).withValues(alpha: 0.12);
+        cor = _cfg.getCor(feat.id).withValues(alpha: 0.12);
       }
 
       final isSelected = _municipioTocado == feat.id;
@@ -166,6 +167,7 @@ class _MapaBaWidgetState extends ConsumerState<MapaBaWidget>
     return Stack(
       children: [
         FlutterMap(
+          key: ValueKey('mapa-${_cfg.sigla}'),
           mapController: _mapController,
           options: MapOptions(
             initialCenter: _center,
@@ -342,7 +344,7 @@ class _MapaBaWidgetState extends ConsumerState<MapaBaWidget>
               nomeMunicipio: feat.nome,
               votosMunicipio: 0,
               percentualMunicipio: 0,
-              mesorregiao: MesorregiaoColors.getNome(feat.id),
+              mesorregiao: _cfg.getNome(feat.id),
             ),
           );
 
@@ -378,7 +380,7 @@ class _MapaBaWidgetState extends ConsumerState<MapaBaWidget>
         nomeMunicipio: nome,
         votosMunicipio: 0,
         percentualMunicipio: 0,
-        mesorregiao: MesorregiaoColors.getNome(id),
+        mesorregiao: _cfg.getNome(id),
       ),
     );
 
@@ -388,7 +390,7 @@ class _MapaBaWidgetState extends ConsumerState<MapaBaWidget>
       backgroundColor: Colors.transparent,
       builder: (_) => MunicipioBottomSheet(
         municipio: dado,
-        mesorregiao: MesorregiaoColors.getNome(id),
+        mesorregiao: _cfg.getNome(id),
         sequencial: widget.sequencial,
       ),
     ).then((_) {
@@ -406,7 +408,7 @@ class _MapaBaWidgetState extends ConsumerState<MapaBaWidget>
         nomeMunicipio: nome,
         votosMunicipio: 0,
         percentualMunicipio: 0,
-        mesorregiao: MesorregiaoColors.getNome(id),
+        mesorregiao: _cfg.getNome(id),
       ),
     );
 

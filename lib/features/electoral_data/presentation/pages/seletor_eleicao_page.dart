@@ -48,7 +48,8 @@ class SeletorEleicaoPage extends ConsumerStatefulWidget {
 
 class _SeletorEleicaoPageState extends ConsumerState<SeletorEleicaoPage>
     with SingleTickerProviderStateMixin {
-  int? _anoSel;
+  // Eleição padrão: a mais recente (2026).
+  int? _anoSel = 2026;
   String? _cargoSel;
   String? _ufSel;
 
@@ -290,7 +291,7 @@ class _SecaoAnos extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
     final tt = Theme.of(context).textTheme;
     // Garante pelo menos os anos padrão se API retornar vazio
-    final listaAnos = anos.isEmpty ? [2018, 2020, 2022, 2024] : anos;
+    final listaAnos = anos.isEmpty ? [2026, 2024, 2022, 2020, 2018] : anos;
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20),

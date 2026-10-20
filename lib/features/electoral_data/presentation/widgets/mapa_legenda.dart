@@ -1,20 +1,21 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../data/services/mesorregiao_colors.dart';
+import '../providers/eleitoral_providers.dart';
 
-/// Legenda colapsável das 7 mesorregiões + escala de intensidade.
+/// Legenda colapsável das mesorregiões da UF ativa + escala de intensidade.
 /// Posicionada bottom-right sobre o mapa.
-class MapaLegenda extends StatefulWidget {
+class MapaLegenda extends ConsumerStatefulWidget {
   const MapaLegenda({super.key, this.modoCalor = false});
 
   /// No modo calor a lista de mesorregiões some — só a escala de intensidade.
   final bool modoCalor;
 
   @override
-  State<MapaLegenda> createState() => _MapaLegendaState();
+  ConsumerState<MapaLegenda> createState() => _MapaLegendaState();
 }
 
-class _MapaLegendaState extends State<MapaLegenda>
+class _MapaLegendaState extends ConsumerState<MapaLegenda>
     with SingleTickerProviderStateMixin {
   bool _expanded = false;
   late AnimationController _ctrl;
@@ -45,18 +46,9 @@ class _MapaLegendaState extends State<MapaLegenda>
     }
   }
 
-  static const _mesorregioes = [
-    ('Extremo Oeste', '2901'),
-    ('Vale do S. Francisco', '2902'),
-    ('Centro-Norte', '2903'),
-    ('Nordeste', '2904'),
-    ('Salvador/RMS', '2905'),
-    ('Centro-Sul', '2906'),
-    ('Sul/Extremo-Sul', '2907'),
-  ];
-
   @override
   Widget build(BuildContext context) {
+    final cfg = ref.watch(ufConfigProvider);
     final cs = Theme.of(context).colorScheme;
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
@@ -121,8 +113,8 @@ class _MapaLegendaState extends State<MapaLegenda>
                   const Divider(height: 8, thickness: 0.5),
                   // Mesorregiões (ocultas no modo calor)
                   if (!widget.modoCalor)
-                  ..._mesorregioes.map((e) {
-                    final color = MesorregiaoColors.cores[e.$2] ??
+                  ...cfg.nomes.entries.map((e) {
+                    final color = cfg.cores[e.key] ??
                         const Color(0xFF388E3C);
                     return Padding(
                       padding: const EdgeInsets.only(bottom: 4),
@@ -139,7 +131,7 @@ class _MapaLegendaState extends State<MapaLegenda>
                           ),
                           const SizedBox(width: 6),
                           Text(
-                            e.$1,
+                            e.value,
                             style: TextStyle(
                               fontSize: 10,
                               color: cs.onSurface,
