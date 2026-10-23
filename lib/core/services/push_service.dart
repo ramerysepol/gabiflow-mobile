@@ -90,7 +90,7 @@ abstract final class PushService {
     NotificacoesLocaisService.aoTocar = _aoTocarLocal;
     FirebaseMessaging.onMessage.listen(_aoReceberEmPrimeiroPlano);
     FirebaseMessaging.onMessageOpenedApp.listen(
-      (m) => _abrirConversa(m.data['conversationId']?.toString()),
+      (m) => _abrirConversa(_destinoDoPayload(m.data)),
     );
     fcm.onTokenRefresh.listen((novo) {
       _tokenAtual = novo;
@@ -98,7 +98,7 @@ abstract final class PushService {
     });
 
     final inicial = await fcm.getInitialMessage();
-    final id = inicial?.data['conversationId']?.toString();
+    final id = inicial == null ? null : _destinoDoPayload(inicial.data);
     if (id != null && id.isNotEmpty) _conversaPendente = id;
   }
 
@@ -181,7 +181,7 @@ abstract final class PushService {
     try {
       final dados = jsonDecode(payload);
       if (dados is Map) {
-        _abrirConversa(dados['conversationId']?.toString());
+        _abrirConversa(_destinoDoPayload(dados));
         return;
       }
     } catch (_) {}
@@ -216,7 +216,21 @@ abstract final class PushService {
     _navegar(id);
   }
 
+  /// Destino do toque: `d:<id>` para push de demanda (data {tipo:'demanda',
+  /// demandaId}); senão o conversationId do WhatsApp.
+  static String? _destinoDoPayload(Map<dynamic, dynamic> dados) {
+    if (dados['tipo']?.toString() == 'demanda') {
+      final d = dados['demandaId']?.toString();
+      if (d != null && int.tryParse(d) != null) return 'd:$d';
+    }
+    return dados['conversationId']?.toString();
+  }
+
   static void _navegar(String? id) {
+    if (id != null && id.startsWith('d:')) {
+      appRouter.push('/home/demands/${id.substring(2)}');
+      return;
+    }
     final valido = id != null && int.tryParse(id) != null;
     appRouter.push(valido ? '$_rotaLista/chat/$id' : _rotaLista);
   }

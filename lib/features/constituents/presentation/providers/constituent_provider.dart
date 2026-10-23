@@ -2,8 +2,8 @@ import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/providers/api_providers.dart';
-import '../../../demands/data/models/demand_model.dart';
-import '../../../demands/presentation/providers/demand_provider.dart';
+import '../../../demands/data/models/demanda_model.dart';
+import '../../../demands/presentation/providers/demanda_providers.dart';
 import '../../data/datasources/constituent_remote_datasource.dart';
 import '../../data/models/constituent_extras.dart';
 import '../../data/models/constituent_model.dart';
@@ -182,9 +182,9 @@ final constituentInteracoesProvider = FutureProvider.autoDispose
 // ── Demandas do munícipe (usa o datasource de demandas) ─────────────────────
 
 final constituentDemandsProvider = FutureProvider.autoDispose
-    .family<DemandListResponse, String>((ref, constituentId) async {
-  final ds = ref.watch(demandDataSourceProvider);
-  return ds.getDemands(constituentId: constituentId, limit: 20);
+    .family<DemandaListaResposta, String>((ref, constituentId) async {
+  final ds = ref.watch(demandaDataSourceProvider);
+  return ds.listarDoMunicipe(int.tryParse(constituentId) ?? 0, limit: 20);
 });
 
 // ── Formulário (criar/editar) ───────────────────────────────────────────────

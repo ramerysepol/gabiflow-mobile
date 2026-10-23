@@ -19,7 +19,7 @@ import 'features/agenda/presentation/providers/event_provider.dart';
 import 'features/auth/presentation/providers/auth_provider.dart';
 import 'features/constituents/presentation/providers/constituent_provider.dart';
 import 'features/dashboard/presentation/providers/dashboard_provider.dart';
-import 'features/demands/presentation/providers/demand_provider.dart';
+import 'features/demands/presentation/providers/demanda_providers.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -159,7 +159,7 @@ class _GabiFlowAppState extends ConsumerState<GabiFlowApp>
   /// elas precisam morrer, senao o proximo login em OUTRO tenant mostra
   /// demandas/municipes/agenda do gabinete anterior — e abrir um item da 404.
   void _descartarDadosDaSessao() {
-    ref.invalidate(demandListProvider);
+    ref.invalidate(demandaListaProvider);
     ref.invalidate(constituentListProvider);
     ref.invalidate(eventListProvider);
     ref.invalidate(dashboardStatsProvider);

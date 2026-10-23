@@ -20,6 +20,7 @@ abstract final class Permissoes {
   static const demandasCriar = 'demands:create';
   static const demandasEditar = 'demands:edit';
   static const demandasExcluir = 'demands:delete';
+  static const demandasStatus = 'demands:status_change';
 
   // Eleitores (people no painel)
   static const eleitoresListar = 'people:list';

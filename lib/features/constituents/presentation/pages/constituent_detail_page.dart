@@ -8,6 +8,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../../../core/auth/permissoes.dart';
 import '../../../../core/theme/design_tokens.dart';
 import '../../../../core/widgets/shimmer_skeleton.dart';
+import '../../../demands/presentation/widgets/demanda_chips.dart';
 import '../../../whatsapp/presentation/widgets/whatsapp_send_sheet.dart';
 import '../../data/models/constituent_model.dart';
 import '../providers/constituent_provider.dart';
@@ -243,7 +244,7 @@ class ConstituentDetailPage extends ConsumerWidget {
                       const _SectionTitle('Demandas'),
                       TextButton.icon(
                         onPressed: () =>
-                            context.push('/home/demands/new'),
+                            context.push('/home/demands/new?eleitorId=$id'),
                         icon: const Icon(Icons.add_rounded, size: 16),
                         label: const Text('Nova',
                             style: TextStyle(fontSize: 12)),
@@ -574,7 +575,7 @@ class _DemandasDoMunicipe extends ConsumerWidget {
                           style: tt.labelSmall
                               ?.copyWith(color: cs.onSurfaceVariant))
                       : null,
-                  trailing: _StatusChip(status: d.status),
+                  trailing: DemandaStatusChip(d.status),
                   onTap: () => context.push('/home/demands/${d.id}'),
                 ),
                 if (i < resp.items.take(5).length - 1)
@@ -593,42 +594,6 @@ class _DemandasDoMunicipe extends ConsumerWidget {
           ),
         );
       },
-    );
-  }
-}
-
-class _StatusChip extends StatelessWidget {
-  const _StatusChip({required this.status});
-
-  final String status;
-
-  @override
-  Widget build(BuildContext context) {
-    final s = status.toLowerCase();
-    final (cor, rotulo) = switch (s) {
-      'nova' || 'pending' || 'aberta' => (Colors.blue, 'Nova'),
-      'em_andamento' || 'in_progress' => (Colors.orange, 'Em andamento'),
-      'concluída' || 'concluida' || 'completed' || 'resolvida' => (
-          Colors.green,
-          'Concluída'
-        ),
-      'cancelada' || 'cancelled' => (Colors.grey, 'Cancelada'),
-      _ => (Colors.blueGrey, status),
-    };
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-      decoration: BoxDecoration(
-        color: cor.withValues(alpha: 0.14),
-        borderRadius: BorderRadius.circular(10),
-      ),
-      child: Text(
-        rotulo,
-        style: TextStyle(
-          fontSize: 10,
-          fontWeight: FontWeight.w700,
-          color: cor.shade700,
-        ),
-      ),
     );
   }
 }

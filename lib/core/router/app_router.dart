@@ -18,9 +18,9 @@ import '../../features/auth/presentation/pages/login_page.dart';
 import '../../features/constituents/presentation/pages/constituent_detail_page.dart';
 import '../../features/constituents/presentation/pages/constituent_form_page.dart';
 import '../../features/constituents/presentation/pages/constituents_list_page.dart';
-import '../../features/demands/presentation/pages/demand_detail_page.dart';
-import '../../features/demands/presentation/pages/demand_form_page.dart';
-import '../../features/demands/presentation/pages/demands_list_page.dart';
+import '../../features/demands/presentation/pages/demanda_detalhe_page.dart';
+import '../../features/demands/presentation/pages/demanda_nova_page.dart';
+import '../../features/demands/presentation/pages/demandas_mesa_page.dart';
 import '../../features/home/presentation/pages/dashboard_page.dart';
 import '../../features/home/presentation/pages/home_page.dart';
 import '../../features/profile/presentation/pages/profile_page.dart';
@@ -58,9 +58,9 @@ import '../../features/electoral_data/presentation/pages/simulador_page.dart';
 ///     /home/constituents/new → ConstituentFormPage (criar)
 ///     /home/constituents/:id → ConstituentDetailPage
 ///     /home/constituents/:id/edit → ConstituentFormPage (editar)
-///     /home/demands      → DemandsListPage
-///     /home/demands/new  → DemandFormPage
-///     /home/demands/:id  → DemandDetailPage
+///     /home/demands      → DemandasMesaPage (Mesa de Demandas 2.0)
+///     /home/demands/new  → DemandaNovaPage (?eleitorId= ?conversationId= ?texto=)
+///     /home/demands/:id  → DemandaDetalhePage
 ///     /home/acao-social                          → AcaoSocialEventosPage
 ///     /home/acao-social/evento/:id               → AcaoSocialEventoPage (central)
 ///     /home/acao-social/evento/:id/cadastro      → CadastroMunicipePage
@@ -209,22 +209,25 @@ final GoRouter appRouter = GoRouter(
           path: '/home/demands',
           pageBuilder: (_, state) => NoTransitionPage(
             key: state.pageKey,
-            child: const DemandsListPage(),
+            child: const DemandasMesaPage(),
           ),
         ),
         GoRoute(
           path: '/home/demands/new',
           builder: (_, state) {
-            // Suporta query param ?id= para editar a partir do detalhe
-            final id = state.uri.queryParameters['id'];
-            return DemandFormPage(demandId: id);
+            final q = state.uri.queryParameters;
+            return DemandaNovaPage(
+              eleitorId: int.tryParse(q['eleitorId'] ?? ''),
+              conversationId: int.tryParse(q['conversationId'] ?? ''),
+              textoInicial: q['texto'],
+            );
           },
         ),
         GoRoute(
           path: '/home/demands/:id',
           builder: (_, state) {
-            final id = state.pathParameters['id']!;
-            return DemandDetailPage(id: id);
+            final id = int.tryParse(state.pathParameters['id'] ?? '') ?? 0;
+            return DemandaDetalhePage(id: id);
           },
         ),
 
