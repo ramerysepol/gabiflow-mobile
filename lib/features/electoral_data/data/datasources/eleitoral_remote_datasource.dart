@@ -3,6 +3,7 @@ import '../models/candidato_model.dart';
 import '../models/candidato_stats_model.dart';
 import '../models/coligacao_detalhe_model.dart';
 import '../models/comparacao_model.dart';
+import '../models/comparativo_bairro_model.dart';
 import '../models/estatisticas_model.dart';
 import '../models/filtros_model.dart';
 import '../models/hierarquia_nivel_model.dart';
@@ -203,6 +204,64 @@ class EleitoralRemoteDatasource {
     );
     final data = _extractData(res.data);
     return ColigacaoDetalheModel.fromJson(data as Map<String, dynamic>);
+  }
+
+  Future<BairrosComparativoModel> getBairrosComparativo({
+    required int ano,
+    required String estado,
+    required String municipio,
+    required String candA,
+    required String candB,
+  }) async {
+    final res = await _client.get<Map<String, dynamic>>(
+      '/api/mobile/eleitoral/comparar-bairro',
+      queryParameters: {
+        'ano': ano,
+        'estado': estado,
+        'municipio': municipio,
+        'cand_a': candA,
+        'cand_b': candB,
+      },
+    );
+    return BairrosComparativoModel.fromJson(
+        _extractData(res.data) as Map<String, dynamic>);
+  }
+
+  Future<SecoesComparativoModel> getSecoesComparativo({
+    required int ano,
+    required String estado,
+    required String municipio,
+    required String candA,
+    required String candB,
+    required String bairro,
+  }) async {
+    final res = await _client.get<Map<String, dynamic>>(
+      '/api/mobile/eleitoral/comparar-bairro',
+      queryParameters: {
+        'ano': ano,
+        'estado': estado,
+        'municipio': municipio,
+        'cand_a': candA,
+        'cand_b': candB,
+        'bairro': bairro,
+      },
+    );
+    return SecoesComparativoModel.fromJson(
+        _extractData(res.data) as Map<String, dynamic>);
+  }
+
+  Future<List<Map<String, dynamic>>> getBairros({
+    required int ano,
+    required String estado,
+    required String municipio,
+  }) async {
+    final res = await _client.get<Map<String, dynamic>>(
+      '/api/mobile/eleitoral/bairros',
+      queryParameters: {'ano': ano, 'estado': estado, 'municipio': municipio},
+    );
+    return (_extractData(res.data) as List)
+        .map((e) => Map<String, dynamic>.from(e as Map))
+        .toList();
   }
 
   dynamic _extractData(Map<String, dynamic>? json) {

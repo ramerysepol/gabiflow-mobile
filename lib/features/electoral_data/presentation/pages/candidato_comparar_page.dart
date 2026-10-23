@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import '../../../../core/widgets/app_empty_state.dart';
 import '../../../../core/widgets/shimmer_skeleton.dart';
 import '../../data/models/candidato_model.dart';
 import '../../data/models/comparacao_model.dart';
+import '../comparativo_args.dart';
+import '../ordenacao_tabela.dart';
 import '../providers/eleitoral_providers.dart';
 import '../widgets/eleicao_contexto_chip.dart';
 import '../widgets/erro_inline.dart';
@@ -253,7 +256,6 @@ class _ComparacaoResult extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    final tt = Theme.of(context).textTheme;
     final diffs = comparacao.diffMunicipios;
 
     // Contadores (o diff do endpoint é sempre entre os dois primeiros)
@@ -339,8 +341,79 @@ class _ComparacaoResult extends StatelessWidget {
             ),
           ),
         ],
+        _ListaMunicipios(
+          diffs: diffs,
+          candidatos: candidatos,
+          nomeA: nomeA,
+          nomeB: nomeB,
+          corA: corA,
+          corB: corB,
+          maxDiff: maxDiff,
+        ),
+        const SizedBox(height: 24),
+      ],
+    );
+  }
+}
+
+// ─── Lista de municípios (ordenável, navegável para bairros) ─────────────────
+
+class _ListaMunicipios extends StatefulWidget {
+  const _ListaMunicipios({
+    required this.diffs,
+    required this.candidatos,
+    required this.nomeA,
+    required this.nomeB,
+    required this.corA,
+    required this.corB,
+    required this.maxDiff,
+  });
+
+  final List<DiffMunicipioModel> diffs;
+  final List<CandidatoModel> candidatos;
+  final String nomeA;
+  final String nomeB;
+  final Color corA;
+  final Color corB;
+  final int maxDiff;
+
+  @override
+  State<_ListaMunicipios> createState() => _ListaMunicipiosState();
+}
+
+class _ListaMunicipiosState extends State<_ListaMunicipios> {
+  OrdenacaoTabela _ord = const OrdenacaoTabela();
+
+  Comparable<dynamic> _chave(DiffMunicipioModel d, int col) => switch (col) {
+        0 => d.nomeMunicipio.toLowerCase(),
+        1 => d.votosA,
+        2 => d.votosB,
+        _ => d.diferenca,
+      };
+
+  void _abrir(DiffMunicipioModel d) {
+    context.push(
+      '/home/eleitoral/comparar/bairros',
+      extra: ComparativoArgs(
+        municipio: d.idMunicipio,
+        nomeMunicipio: d.nomeMunicipio,
+        candA: widget.candidatos[0].sequencial,
+        candB: widget.candidatos[1].sequencial,
+        nomeA: widget.nomeA,
+        nomeB: widget.nomeB,
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final tt = Theme.of(context).textTheme;
+    final itens = _ord.aplicar(widget.diffs, _chave);
+    return Column(
+      children: [
         Padding(
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 6),
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -350,21 +423,33 @@ class _ComparacaoResult extends StatelessWidget {
                     ?.copyWith(letterSpacing: 0.8, color: cs.onSurfaceVariant),
               ),
               Text(
-                '${diffs.length} municípios',
+                '${widget.diffs.length} municípios',
                 style: tt.labelSmall?.copyWith(color: cs.onSurfaceVariant),
               ),
             ],
           ),
         ),
-        ...diffs.map((d) => _DiffMunicipioItem(
+        CabecalhoOrdenavel(
+          padding: const EdgeInsets.fromLTRB(28, 4, 44, 2),
+          ordenacao: _ord,
+          onOrdenar: (i) => setState(
+              () => _ord = _ord.alternar(i, ascInicial: i == 0)),
+          colunas: [
+            const ColunaOrdenavel('Município', flex: 3),
+            ColunaOrdenavel('A', direita: true, cor: widget.corA),
+            ColunaOrdenavel('B', direita: true, cor: widget.corB),
+            const ColunaOrdenavel('Dif.', direita: true),
+          ],
+        ),
+        ...itens.map((d) => _DiffMunicipioItem(
               diff: d,
-              nomeA: nomeA,
-              nomeB: nomeB,
-              corA: corA,
-              corB: corB,
-              maxDiff: maxDiff,
+              nomeA: widget.nomeA,
+              nomeB: widget.nomeB,
+              corA: widget.corA,
+              corB: widget.corB,
+              maxDiff: widget.maxDiff,
+              onTap: () => _abrir(d),
             )),
-        const SizedBox(height: 24),
       ],
     );
   }
@@ -613,8 +698,10 @@ class _DiffMunicipioItem extends StatelessWidget {
     required this.corA,
     required this.corB,
     required this.maxDiff,
+    this.onTap,
   });
 
+  final VoidCallback? onTap;
   final DiffMunicipioModel diff;
   final String nomeA;
   final String nomeB;
@@ -642,8 +729,12 @@ class _DiffMunicipioItem extends StatelessWidget {
     final pctA = totalRow > 0 ? (diff.votosA / totalRow) : 0.5;
     final pctB = totalRow > 0 ? (diff.votosB / totalRow) : 0.5;
 
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      child: InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: Ink(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
         color: cs.surfaceContainerLow,
@@ -684,6 +775,8 @@ class _DiffMunicipioItem extends StatelessWidget {
                   overflow: TextOverflow.ellipsis,
                 ),
               ),
+              if (onTap != null)
+                Icon(Icons.chevron_right, size: 18, color: cs.onSurfaceVariant),
             ],
           ),
           const SizedBox(height: 8),
@@ -774,6 +867,8 @@ class _DiffMunicipioItem extends StatelessWidget {
             ],
           ),
         ],
+      ),
+      ),
       ),
     );
   }

@@ -103,6 +103,7 @@ dependencies:
   package_info_plus: ^9.0.1
   firebase_core: ^5.0.0
   firebase_messaging: ^17.0.0
+  excel: ^4.0.6
 
 # Nao buildamos Windows. A implementacao Windows do file_picker 13 exige win32
 # 6.x, incompativel com package_info_plus/flutter_secure_storage (win32 5.x);

@@ -9,6 +9,7 @@ import '../../../electoral_data/presentation/providers/eleitoral_providers.dart'
 import '../../data/models/ia_contexto_model.dart';
 import '../../data/models/ia_models.dart';
 import '../providers/command_center_providers.dart';
+import '../widgets/transferencia_card.dart';
 import '../widgets/bairro_search_card.dart';
 import '../widgets/ia_candidato_picker.dart';
 import '../widgets/ia_visualization_view.dart';
@@ -74,6 +75,7 @@ class CommandCenterPage extends ConsumerWidget {
                   ),
                   const _AskBar(),
                   const BairroSearchCard(),
+                  const TransferenciaCard(),
                   const SizedBox(height: 8),
                   const _InsightDiaCard(),
                   const _AlertasSection(),

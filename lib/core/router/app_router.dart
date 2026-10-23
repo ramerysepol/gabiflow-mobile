@@ -31,8 +31,12 @@ import '../../features/whatsapp/presentation/pages/central_page.dart';
 import '../../features/whatsapp/presentation/pages/envio_massa_progress_page.dart';
 import '../../features/command_center/presentation/pages/command_center_page.dart';
 import '../../features/command_center/presentation/pages/ia_chat_page.dart';
+import '../../features/command_center/presentation/pages/transferencia_page.dart';
 import '../../features/electoral_data/presentation/pages/analise_page.dart';
+import '../../features/electoral_data/presentation/comparativo_args.dart';
+import '../../features/electoral_data/presentation/pages/bairros_comparativo_page.dart';
 import '../../features/electoral_data/presentation/pages/candidato_comparar_page.dart';
+import '../../features/electoral_data/presentation/pages/secoes_comparativo_page.dart';
 import '../../features/electoral_data/presentation/pages/candidato_detail_page.dart';
 import '../../features/electoral_data/presentation/pages/eleitoral_home_page.dart';
 import '../../features/electoral_data/presentation/pages/eleitoral_mapa_page.dart';
@@ -349,8 +353,22 @@ final GoRouter appRouter = GoRouter(
           builder: (_, __) => const CompararPage(),
         ),
         GoRoute(
+          path: '/home/eleitoral/comparar/bairros',
+          builder: (_, state) =>
+              BairrosComparativoPage(args: state.extra! as ComparativoArgs),
+        ),
+        GoRoute(
+          path: '/home/eleitoral/comparar/bairros/secoes',
+          builder: (_, state) =>
+              SecoesComparativoPage(args: state.extra! as ComparativoArgs),
+        ),
+        GoRoute(
           path: '/home/eleitoral/analise',
           builder: (_, __) => const AnalisePage(),
+        ),
+        GoRoute(
+          path: '/home/eleitoral/ia/transferencia',
+          builder: (_, __) => const TransferenciaPage(),
         ),
         GoRoute(
           path: '/home/eleitoral/ia/chat',
