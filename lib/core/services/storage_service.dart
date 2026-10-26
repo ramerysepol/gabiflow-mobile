@@ -9,12 +9,12 @@ import '../constants/app_constants.dart';
 class StorageService {
   static const _secureStorage = FlutterSecureStorage();
   static SharedPreferences? _prefs;
-  
+
   /// Inicializa o SharedPreferences
   static Future<void> init() async {
     _prefs = await SharedPreferences.getInstance();
   }
-  
+
   // ===== Secure Storage (para dados sensíveis) =====
 
   // Evita limpar o cofre repetidamente numa mesma sessão.
@@ -62,7 +62,10 @@ class StorageService {
   /// Salva a configuração do tenant
   static Future<void> saveTenantConfig(Map<String, dynamic> config) async {
     final jsonString = jsonEncode(config);
-    await _secureStorage.write(key: AppConstants.tenantConfigKey, value: jsonString);
+    await _secureStorage.write(
+      key: AppConstants.tenantConfigKey,
+      value: jsonString,
+    );
   }
 
   /// Recupera a configuração do tenant
@@ -81,7 +84,10 @@ class StorageService {
   /// Salva dados do usuário
   static Future<void> saveUserData(Map<String, dynamic> userData) async {
     final jsonString = jsonEncode(userData);
-    await _secureStorage.write(key: AppConstants.userDataKey, value: jsonString);
+    await _secureStorage.write(
+      key: AppConstants.userDataKey,
+      value: jsonString,
+    );
   }
 
   /// Recupera dados do usuário
@@ -96,19 +102,19 @@ class StorageService {
     }
     return null;
   }
-  
+
   /// Limpa as configurações do tenant
   static Future<void> clearTenantConfig() async {
     await _secureStorage.delete(key: AppConstants.tenantConfigKey);
   }
-  
+
   /// Limpa apenas dados de autenticação (preserva tenant)
   static Future<void> clearAuthDataOnly() async {
     await _secureStorage.delete(key: AppConstants.accessTokenKey);
     await _secureStorage.delete(key: AppConstants.refreshTokenKey);
     await _secureStorage.delete(key: AppConstants.userDataKey);
   }
-  
+
   /// Salva credenciais para login biométrico (por usuário + tenant).
   static Future<void> saveBiometricCredentials(
     String email,
@@ -143,55 +149,55 @@ class StorageService {
     }
     return null;
   }
-  
+
   /// Limpa credenciais biométricas
   static Future<void> clearBiometricCredentials() async {
     await _secureStorage.delete(key: 'biometric_credentials');
   }
-  
+
   /// Limpa todos os dados seguros (logout/reset)
   /// USAR APENAS quando o usuário clicar em "Mudar Gabinete"
   static Future<void> clearSecureStorage() async {
     await _secureStorage.deleteAll();
   }
-  
+
   // ===== SharedPreferences (para dados não sensíveis) =====
-  
+
   /// Salva o tema selecionado
   static Future<void> saveThemeMode(String mode) async {
     await _prefs?.setString(AppConstants.themeKey, mode);
   }
-  
+
   /// Recupera o tema selecionado
   static String? getThemeMode() {
     return _prefs?.getString(AppConstants.themeKey);
   }
-  
+
   /// Salva uma preferência string
   static Future<void> saveString(String key, String value) async {
     await _prefs?.setString(key, value);
   }
-  
+
   /// Recupera uma preferência string
   static String? getString(String key) {
     return _prefs?.getString(key);
   }
-  
+
   /// Salva uma preferência bool
   static Future<void> saveBool(String key, bool value) async {
     await _prefs?.setBool(key, value);
   }
-  
+
   /// Recupera uma preferência bool
   static bool? getBool(String key) {
     return _prefs?.getBool(key);
   }
-  
+
   /// Limpa todas as preferências
   static Future<void> clearPreferences() async {
     await _prefs?.clear();
   }
-  
+
   /// Limpa todos os dados (secure + preferences)
   static Future<void> clearAll() async {
     await clearSecureStorage();

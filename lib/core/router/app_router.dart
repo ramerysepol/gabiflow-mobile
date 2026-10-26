@@ -11,9 +11,6 @@ import '../../features/acao_social/presentation/pages/ficha_atendimento_page.dar
 import '../../features/agenda/presentation/pages/agenda_page.dart';
 import '../../features/agenda/presentation/pages/event_detail_page.dart';
 import '../../features/agenda/presentation/pages/event_form_page.dart';
-import '../../features/apuracao/presentation/pages/apuracao_page.dart';
-import '../../features/apuracao/presentation/pages/apuracao_tv_page.dart';
-import '../../features/apuracao/presentation/pages/candidato_apuracao_page.dart';
 import '../../features/auth/presentation/pages/login_page.dart';
 import '../../features/constituents/presentation/pages/constituent_detail_page.dart';
 import '../../features/constituents/presentation/pages/constituent_form_page.dart';
@@ -68,9 +65,6 @@ import '../../features/electoral_data/presentation/pages/simulador_page.dart';
 ///     /home/agenda       → AgendaPage
 ///     /home/agenda/new   → EventFormPage
 ///     /home/agenda/:id   → EventDetailPage
-///     /home/apuracao                     → ApuracaoPage (header + dock da Home)
-///     /home/apuracao/candidato/:sqcand    → CandidatoApuracaoPage
-///     /home/apuracao/tv?cargo=           → ApuracaoTvPage (Modo TV, tela cheia)
 ///     /home/eleitoral              → EleitoralHomePage (condicional)
 ///     /home/eleitoral/selecionar   → SeletorEleicaoPage
 ///     /home/eleitoral/candidato/:sequencial → CandidatoDetailPage
@@ -274,33 +268,6 @@ final GoRouter appRouter = GoRouter(
           builder: (_, state) {
             final id = state.pathParameters['id']!;
             return EventDetailPage(id: id);
-          },
-        ),
-
-        // ── Apuração ao vivo (resultados oficiais do TSE) ───────────────────
-        // Página principal fica dentro do shell normal da Home (header +
-        // dock, com "Início" selecionado — ver HomePage); o detalhe do
-        // candidato abre em tela cheia, como os demais detalhes do app.
-        GoRoute(
-          path: '/home/apuracao',
-          pageBuilder: (_, state) =>
-              NoTransitionPage(key: state.pageKey, child: const ApuracaoPage()),
-        ),
-        GoRoute(
-          path: '/home/apuracao/candidato/:sqcand',
-          builder: (_, state) {
-            final sqcand = state.pathParameters['sqcand']!;
-            return CandidatoApuracaoPage(sqcand: sqcand);
-          },
-        ),
-        // Modo TV ("sala de guerra"): tela cheia, sem dock — ver HomePage
-        // (rootIndex < 0 pra qualquer rota fora da lista de abas).
-        GoRoute(
-          path: '/home/apuracao/tv',
-          builder: (_, state) {
-            final cargo =
-                int.tryParse(state.uri.queryParameters['cargo'] ?? '') ?? 1;
-            return ApuracaoTvPage(cargo: cargo);
           },
         ),
 

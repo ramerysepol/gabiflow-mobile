@@ -2,10 +2,8 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
 import 'logger_service.dart';
 
-/// Serviço de notificações locais (in-app), hoje usado apenas pelos alertas
-/// da Apuração ao vivo (feed "Acontecendo agora"). A inicialização é lazy —
-/// só ocorre na primeira chamada (ver `ApuracaoPage`), que é também quando o
-/// usuário vê o pedido de permissão pela primeira vez.
+/// Serviço de notificações locais (in-app), usado para avisos de mensagens
+/// de WhatsApp em primeiro plano. A inicialização é lazy.
 abstract final class NotificacoesLocaisService {
   static final FlutterLocalNotificationsPlugin _plugin =
       FlutterLocalNotificationsPlugin();
@@ -21,11 +19,6 @@ abstract final class NotificacoesLocaisService {
   static const _canalWhatsappNome = 'Mensagens de WhatsApp';
   static const _canalWhatsappDescricao =
       'Avisos de novas mensagens recebidas no atendimento';
-
-  static const _canalId = 'apuracao';
-  static const _canalNome = 'Apuração ao vivo';
-  static const _canalDescricao =
-      'Alertas de projeção, posição e votos do candidato acompanhado';
 
   /// Inicializa o plugin, cria o canal Android e pede permissão ao usuário.
   /// Seguro de chamar mais de uma vez — só executa na primeira.
@@ -50,17 +43,10 @@ abstract final class NotificacoesLocaisService {
         },
       );
 
-      const canal = AndroidNotificationChannel(
-        _canalId,
-        _canalNome,
-        description: _canalDescricao,
-        importance: Importance.high,
-      );
       final androidImpl = _plugin
           .resolvePlatformSpecificImplementation<
             AndroidFlutterLocalNotificationsPlugin
           >();
-      await androidImpl?.createNotificationChannel(canal);
       await androidImpl?.createNotificationChannel(
         const AndroidNotificationChannel(
           _canalWhatsappId,
@@ -72,35 +58,6 @@ abstract final class NotificacoesLocaisService {
       await androidImpl?.requestNotificationsPermission();
     } catch (e, st) {
       LoggerService.e('Falha ao inicializar notificações locais', e, st);
-    }
-  }
-
-  /// Mostra uma notificação local simples (título + corpo). Chama [init]
-  /// sozinho caso ainda não tenha sido inicializado.
-  static Future<void> mostrar(int id, String titulo, String corpo) async {
-    if (!_inicializado) await init();
-    try {
-      await _plugin.show(
-        id,
-        titulo,
-        corpo,
-        const NotificationDetails(
-          android: AndroidNotificationDetails(
-            _canalId,
-            _canalNome,
-            channelDescription: _canalDescricao,
-            importance: Importance.high,
-            priority: Priority.high,
-          ),
-          iOS: DarwinNotificationDetails(
-            presentAlert: true,
-            presentBadge: true,
-            presentSound: true,
-          ),
-        ),
-      );
-    } catch (e, st) {
-      LoggerService.e('Falha ao mostrar notificação local', e, st);
     }
   }
 

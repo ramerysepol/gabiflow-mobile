@@ -123,15 +123,6 @@ class _AcessoRapidoGrid extends ConsumerWidget {
     );
 
     final cards = <Widget>[
-      if (temEleitoral)
-        GradientActionCard(
-          titulo: 'Apuração ao vivo',
-          subtitulo: 'Resultados oficiais do TSE',
-          icone: Icons.how_to_vote_rounded,
-          cores: const [Color(0xFFB71C1C), Color(0xFFE53935)],
-          badge: 'AO VIVO',
-          onTap: () => context.go('/home/apuracao'),
-        ),
       if (temCentral)
         GradientActionCard(
           titulo: 'Atendimento',

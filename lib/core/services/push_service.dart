@@ -44,7 +44,9 @@ abstract final class PushService {
     final projectId = _env('FIREBASE_PROJECT_ID');
     final senderId = _env('FIREBASE_MESSAGING_SENDER_ID');
     final ios = Platform.isIOS;
-    final apiKey = _env(ios ? 'FIREBASE_API_KEY_IOS' : 'FIREBASE_API_KEY_ANDROID');
+    final apiKey = _env(
+      ios ? 'FIREBASE_API_KEY_IOS' : 'FIREBASE_API_KEY_ANDROID',
+    );
     final appId = _env(ios ? 'FIREBASE_APP_ID_IOS' : 'FIREBASE_APP_ID_ANDROID');
     if (projectId.isEmpty ||
         senderId.isEmpty ||

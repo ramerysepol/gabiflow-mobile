@@ -6,7 +6,7 @@ import '../services/storage_service.dart';
 /// Serviço para gerenciar autenticação biométrica
 class BiometricService {
   static final LocalAuthentication _localAuth = LocalAuthentication();
-  
+
   /// Verifica se o dispositivo suporta biometria
   static Future<bool> isDeviceSupported() async {
     try {
@@ -16,7 +16,7 @@ class BiometricService {
       return false;
     }
   }
-  
+
   /// Verifica se existe biometria cadastrada no dispositivo
   static Future<bool> canCheckBiometrics() async {
     try {
@@ -26,7 +26,7 @@ class BiometricService {
       return false;
     }
   }
-  
+
   /// Lista os tipos de biometria disponíveis
   static Future<List<BiometricType>> getAvailableBiometrics() async {
     try {
@@ -36,11 +36,11 @@ class BiometricService {
       return [];
     }
   }
-  
+
   /// Verifica se a biometria está habilitada para o app
   static Future<bool> isBiometricEnabled() async {
     final enabled = StorageService.getBool('biometric_enabled') ?? false;
-    
+
     // Verifica também se ainda está disponível no dispositivo
     if (enabled) {
       final canCheck = await canCheckBiometrics();
@@ -50,20 +50,20 @@ class BiometricService {
         return false;
       }
     }
-    
+
     return enabled;
   }
-  
+
   /// Habilita ou desabilita a biometria
   static Future<void> setBiometricEnabled(bool enabled) async {
     await StorageService.saveBool('biometric_enabled', enabled);
-    
+
     if (!enabled) {
       // Se desabilitou, remove as credenciais biométricas
       await StorageService.clearBiometricCredentials();
     }
   }
-  
+
   /// Autentica usando biometria
   static Future<bool> authenticate({
     required String reason,
@@ -75,13 +75,13 @@ class BiometricService {
         LoggerService.w('Biometric authentication not supported');
         return false;
       }
-      
+
       final canCheck = await canCheckBiometrics();
       if (!canCheck) {
         LoggerService.w('No biometrics enrolled');
         return false;
       }
-      
+
       final authenticated = await _localAuth.authenticate(
         localizedReason: reason,
         options: AuthenticationOptions(
@@ -90,14 +90,14 @@ class BiometricService {
           useErrorDialogs: true,
         ),
       );
-      
+
       return authenticated;
     } catch (e) {
       LoggerService.e('Error during biometric authentication', e);
       return false;
     }
   }
-  
+
   /// Solicita permissão e configura biometria após o primeiro login
   static Future<bool> setupBiometricAfterLogin({
     required String email,
@@ -108,33 +108,37 @@ class BiometricService {
       // Verifica se o dispositivo suporta
       final isSupported = await isDeviceSupported();
       if (!isSupported) return false;
-      
+
       // Verifica se tem biometria cadastrada
       final canCheck = await canCheckBiometrics();
       if (!canCheck) return false;
-      
+
       // Autentica para confirmar que é o usuário
       final authenticated = await authenticate(
-        reason: 'Configure a biometria para acessar o GabiFlow mais rapidamente',
+        reason:
+            'Configure a biometria para acessar o GabiFlow mais rapidamente',
       );
-      
+
       if (authenticated) {
         // Salva as credenciais de forma segura (por usuário + tenant)
-        await StorageService.saveBiometricCredentials(email, password,
-            tenant: tenant);
+        await StorageService.saveBiometricCredentials(
+          email,
+          password,
+          tenant: tenant,
+        );
         await setBiometricEnabled(true);
-        
+
         LoggerService.i('Biometric authentication configured successfully');
         return true;
       }
-      
+
       return false;
     } catch (e) {
       LoggerService.e('Error setting up biometric authentication', e);
       return false;
     }
   }
-  
+
   /// Faz login usando biometria
   static Future<BiometricLoginResult> loginWithBiometric() async {
     try {
@@ -146,19 +150,19 @@ class BiometricService {
           error: 'Biometria não está habilitada',
         );
       }
-      
+
       // Autentica
       final authenticated = await authenticate(
         reason: 'Use sua biometria para entrar no GabiFlow',
       );
-      
+
       if (!authenticated) {
         return BiometricLoginResult(
           success: false,
           error: 'Autenticação biométrica falhou',
         );
       }
-      
+
       // Recupera as credenciais
       final credentials = await StorageService.getBiometricCredentials();
       if (credentials == null) {
@@ -166,10 +170,11 @@ class BiometricService {
         await setBiometricEnabled(false);
         return BiometricLoginResult(
           success: false,
-          error: 'Credenciais não encontradas. Configure a biometria novamente.',
+          error:
+              'Credenciais não encontradas. Configure a biometria novamente.',
         );
       }
-      
+
       return BiometricLoginResult(
         success: true,
         email: credentials['email'],
@@ -191,7 +196,7 @@ class BiometricLoginResult {
   final String? email;
   final String? password;
   final String? error;
-  
+
   BiometricLoginResult({
     required this.success,
     this.email,

@@ -60,30 +60,22 @@ class HomePage extends ConsumerWidget {
     // so o "X" da Visao Geral devolve ao GabiFlow.
     if (location.startsWith('/home/eleitoral')) return child;
 
-    // Apuração ao vivo: sub-página da aba Início — mantém o dock com
-    // "Início" selecionado (não ganha um ícone novo no dock), mas exibe
-    // título e identidade visual próprios no header, como os demais módulos.
-    final isApuracaoPrincipal = location == '/home/apuracao';
-
-    final rootIndex = routes.indexOf(isApuracaoPrincipal ? '/home' : location);
+    final rootIndex = routes.indexOf(location);
 
     // Sub-página (detalhe/formulário): tela cheia, sem header nem dock.
     if (rootIndex < 0) return child;
 
-    final isHome = rootIndex == 0 && !isApuracaoPrincipal;
+    final isHome = rootIndex == 0;
 
     // Identidade visual por aba (cor + marca-d'água) — DNA da Central
     final cs0 = Theme.of(context).colorScheme;
-    final (accent, iconeAba) = isApuracaoPrincipal
-        ? (const Color(0xFFB71C1C), Icons.how_to_vote_rounded)
-        : switch (titles[rootIndex]) {
-            'Munícipes' => (const Color(0xFF1976D2), Icons.people_rounded),
-            'Demandas' => (const Color(0xFFEF6C00), Icons.inbox_rounded),
-            'Agenda' => (const Color(0xFF00897B), Icons.calendar_month_rounded),
-            _ => (cs0.primary, null),
-          };
+    final (accent, iconeAba) = switch (titles[rootIndex]) {
+      'Munícipes' => (const Color(0xFF1976D2), Icons.people_rounded),
+      'Demandas' => (const Color(0xFFEF6C00), Icons.inbox_rounded),
+      'Agenda' => (const Color(0xFF00897B), Icons.calendar_month_rounded),
+      _ => (cs0.primary, null),
+    };
     final user = ref.watch(authProvider).user;
-    final cs = Theme.of(context).colorScheme;
     // Base escura "war room" (padrao da Central Eleitoral) em todo o app;
     // o accent de cada aba entra como brilho/gradiente por cima.
     final isDarkTema = Theme.of(context).brightness == Brightness.dark;
@@ -98,9 +90,7 @@ class HomePage extends ConsumerWidget {
             _InkHeader(
               ink: ink,
               isHome: isHome,
-              title: isApuracaoPrincipal
-                  ? 'Apuração ao vivo'
-                  : titles[rootIndex],
+              title: titles[rootIndex],
               accent: accent,
               icone: iconeAba,
               userName: user?.name,
